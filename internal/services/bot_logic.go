@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -9,51 +10,94 @@ import (
 	"gorm.io/gorm"
 )
 
+type TempDataStruct struct {
+	DraftName string `json:"draft_name"`
+}
+
 func ProcessConversation(db *gorm.DB, msg struct {
 	From string `json:"from"`
-	ID   string `json:"id"`
-	Type string `json:"type"`
 	Text struct {
 		Body string `json:"body"`
 	} `json:"text"`
 }) {
-	var conversation models.Conversation
+	var conv models.Conversation
 
-	result := db.FirstOrCreate(&conversation, models.Conversation{Phone: msg.From})
-	if result.Error != nil {
-		log.Println("Error DB:", result.Error)
+	if err := db.FirstOrCreate(&conv, models.Conversation{Phone: msg.From}).Error; err != nil {
+		log.Printf("Error DB: %v", err)
 		return
 	}
 
-	fmt.Printf("Procesando mensaje de %s. Estado actual: %s\n", conversation.Phone, conversation.CurrentStep)
+	log.Printf("Usuario: %s | Estado: %s | Input: %s", msg.From, conv.CurrentStep, msg.Text.Body)
 
-	switch conversation.CurrentStep {
+	switch conv.CurrentStep {
 	case "NEW":
-		log.Printf("Nuevo usuario: %s", msg.From)
+		SendWhatsAppMessage(msg.From, "¡Hola! 👋 Bienvenido al sistema de agendamiento.\n\nPor favor, escribe tu *Nombre Completo* para comenzar:")
+		updateState(db, &conv, "WAITING_NAME", nil)
 
-		err := SendWhatsAppMessage(msg.From, "¡Hola! 👋 Bienvenido a *MiBarbería*. \n\nPor favor escribe tu nombre para empezar.")
-		if err != nil {
-			log.Printf("ERROR enviando mensaje: %v", err)
+	case "WAITING_NAME":
+		name := msg.Text.Body
+		if len(name) < 3 {
+			SendWhatsAppMessage(msg.From, "El nombre es muy corto. Por favor intenta de nuevo:")
 			return
 		}
 
-		conversation.CurrentStep = "WAITING_NAME"
-		db.Save(&conversation)
+		tempData := TempDataStruct{DraftName: name}
 
-	case "WAITING_NAME":
-		nombre := msg.Text.Body
+		msgRes := fmt.Sprintf("Gracias %s. 🗓️\n\nPor favor escribe la fecha y hora deseada en formato *DD/MM HH:MM*.\nEjemplo: *28/02 15:00* (para el 28 de feb a las 3 PM).", name)
+		SendWhatsAppMessage(msg.From, msgRes)
 
-		responseMsg := fmt.Sprintf("Un gusto, %s. 📅 ¿Para qué fecha deseas la cita? (Ej: Mañana 3pm)", nombre)
-		err := SendWhatsAppMessage(msg.From, responseMsg)
+		updateState(db, &conv, "WAITING_DATE", tempData)
+
+	case "WAITING_DATE":
+		inputDate := msg.Text.Body
+
+		bookedTime, err := ParseAppointmentTime(inputDate)
 		if err != nil {
-			log.Printf("ERROR enviando mensaje: %v", err)
+			SendWhatsAppMessage(msg.From, "⚠️ Formato inválido o fecha pasada.\nUsa el formato: *DD/MM HH:MM* (Ej: 28/02 15:00)")
+			return
 		}
 
-		conversation.CurrentStep = "WAITING_DATE"
-		db.Save(&conversation)
+		isFree, err := CheckAvailability(db, bookedTime)
+		if err != nil {
+			SendWhatsAppMessage(msg.From, "Error interno verificando agenda. Intenta más tarde.")
+			return
+		}
+		if !isFree {
+			SendWhatsAppMessage(msg.From, "❌ Ese horario ya está ocupado.\nPor favor escribe otra hora (Ej: 28/02 16:00):")
+			return
+		}
+
+		var data TempDataStruct
+		if len(conv.TempData) > 0 {
+			json.Unmarshal(conv.TempData, &data)
+		}
+
+		err = CreateAppointment(db, msg.From, data.DraftName, bookedTime)
+		if err != nil {
+			SendWhatsAppMessage(msg.From, "No pudimos guardar tu cita. Intenta de nuevo.")
+			return
+		}
+
+		confirmMsg := fmt.Sprintf("✅ *¡Cita Confirmada!*\n\nCliente: %s\nFecha: %s\n\nTe esperamos.", data.DraftName, bookedTime.Format("02/01/2006 03:04 PM"))
+		SendWhatsAppMessage(msg.From, confirmMsg)
+
+		updateState(db, &conv, "NEW", TempDataStruct{}) // Limpiamos datos
 
 	default:
-		conversation.CurrentStep = "NEW"
-		db.Save(&conversation)
+		SendWhatsAppMessage(msg.From, "Sesión reiniciada. Escribe tu nombre para agendar:")
+		updateState(db, &conv, "WAITING_NAME", nil)
 	}
+}
+
+func updateState(db *gorm.DB, conv *models.Conversation, newStep string, data interface{}) {
+	conv.CurrentStep = newStep
+
+	if data != nil {
+		jsonData, _ := json.Marshal(data)
+		conv.TempData = jsonData
+	} else {
+		conv.TempData = []byte("{}")
+	}
+
+	db.Save(conv)
 }

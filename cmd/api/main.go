@@ -19,7 +19,7 @@ func main() {
 		log.Fatal("Fallo al conectar a la DB:", err)
 	}
 
-	db.AutoMigrate(&models.Conversation{})
+	db.AutoMigrate(&models.Conversation{}, &models.Appointment{})
 
 	r := gin.Default()
 
