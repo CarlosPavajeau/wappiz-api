@@ -19,7 +19,9 @@ func main() {
 		log.Fatal("Fallo al conectar a la DB:", err)
 	}
 
-	db.AutoMigrate(&models.Conversation{}, &models.Appointment{})
+	if err := db.AutoMigrate(&models.Conversation{}, &models.Appointment{}); err != nil {
+		log.Fatal("Error migrando base de datos:", err)
+	}
 
 	r := gin.Default()
 
