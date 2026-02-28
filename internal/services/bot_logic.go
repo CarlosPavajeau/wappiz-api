@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"appointments/internal/models"
 
@@ -14,9 +15,10 @@ import (
 type ConversationStep string
 
 const (
-	StepNew         ConversationStep = "NEW"
-	StepWaitingName ConversationStep = "WAITING_NAME"
-	StepWaitingDate ConversationStep = "WAITING_DATE"
+	StepNew             ConversationStep = "NEW"
+	StepChoosingOption  ConversationStep = "CHOOSING_OPTION"
+	StepWaitingName     ConversationStep = "WAITING_NAME"
+	StepWaitingDate     ConversationStep = "WAITING_DATE"
 )
 
 // TempDataStruct holds transient data between conversation steps.
@@ -65,6 +67,7 @@ type StateMachine struct {
 func NewStateMachine() *StateMachine {
 	sm := &StateMachine{handlers: make(map[ConversationStep]StepHandlerFunc)}
 	sm.Register(StepNew, handleNew)
+	sm.Register(StepChoosingOption, handleChoosingOption)
 	sm.Register(StepWaitingName, handleWaitingName)
 	sm.Register(StepWaitingDate, handleWaitingDate)
 	return sm
@@ -90,8 +93,7 @@ func (sm *StateMachine) Process(db *gorm.DB, msg models.WhatsAppMessage) {
 	h, ok := sm.handlers[ConversationStep(conv.CurrentStep)]
 	if !ok {
 		slog.Warn("unknown conversation step, resetting", "phone", msg.From, "step", conv.CurrentStep)
-		reply(msg.From, "Sesión reiniciada. Escribe tu nombre para agendar:")
-		if err := updateState(db, &conv, StepWaitingName, nil); err != nil {
+		if err := updateState(db, &conv, StepNew, nil); err != nil {
 			slog.Error("failed to reset conversation state", "phone", msg.From, "error", err)
 		}
 		return
@@ -113,8 +115,37 @@ func ProcessConversation(db *gorm.DB, msg models.WhatsAppMessage) {
 // ---- Step handlers ----
 
 func handleNew(ctx *StepContext) error {
-	ctx.Reply("¡Hola! 👋 Bienvenido al sistema de agendamiento.\n\nPor favor, escribe tu *Nombre Completo* para comenzar:")
-	return ctx.Transition(StepWaitingName, nil)
+	ctx.Reply("¡Hola! 👋 Bienvenido al sistema de agendamiento.\n\n¿Qué deseas hacer?\n\n*1.* 📅 Agendar una cita\n*2.* 🔍 Consultar mi cita")
+	return ctx.Transition(StepChoosingOption, nil)
+}
+
+func handleChoosingOption(ctx *StepContext) error {
+	switch strings.TrimSpace(ctx.Msg.Text.Body) {
+	case "1":
+		ctx.Reply("Por favor, escribe tu *Nombre Completo* para continuar:")
+		return ctx.Transition(StepWaitingName, nil)
+	case "2":
+		appt, err := GetLatestAppointment(ctx.DB, ctx.Msg.From)
+		if err != nil {
+			slog.Error("failed to get latest appointment", "phone", ctx.Msg.From, "error", err)
+			ctx.Reply("Error interno consultando tu cita. Intenta más tarde.")
+			return nil
+		}
+		if appt == nil {
+			ctx.Reply("No encontramos ninguna cita registrada para tu número.")
+		} else {
+			ctx.Reply(fmt.Sprintf(
+				"📋 *Tu cita más reciente:*\n\nCliente: %s\nFecha: %s\nEstado: %s",
+				appt.ClientName,
+				appt.StartTime.In(bogotaLoc).Format("02/01/2006 03:04 PM"),
+				appt.Status,
+			))
+		}
+		return ctx.Transition(StepNew, nil)
+	default:
+		ctx.Reply("Por favor responde *1* para agendar o *2* para consultar tu cita:")
+		return nil
+	}
 }
 
 func handleWaitingName(ctx *StepContext) error {
