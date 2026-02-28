@@ -11,16 +11,53 @@ import (
 	"time"
 )
 
-type WhatsAppMessageReq struct {
+// ReplyButton represents a single interactive reply button.
+type ReplyButton struct {
+	ID    string
+	Title string
+}
+
+// ---- Outgoing message payload types ----
+
+type textMessageReq struct {
 	MessagingProduct string      `json:"messaging_product"`
 	To               string      `json:"to"`
 	Type             string      `json:"type"`
-	Text             *TextObject `json:"text,omitempty"`
+	Text             *textBody   `json:"text,omitempty"`
 }
 
-type TextObject struct {
-	Body string `json:"body"`
+type interactiveMessageReq struct {
+	MessagingProduct string      `json:"messaging_product"`
+	To               string      `json:"to"`
+	Type             string      `json:"type"`
+	Interactive      interactive `json:"interactive"`
 }
+
+type interactive struct {
+	Type   string       `json:"type"`
+	Body   textBody     `json:"body"`
+	Action buttonAction `json:"action"`
+}
+
+type textBody struct {
+	Text string `json:"text"`
+}
+
+type buttonAction struct {
+	Buttons []actionButton `json:"buttons"`
+}
+
+type actionButton struct {
+	Type  string      `json:"type"`
+	Reply buttonReply `json:"reply"`
+}
+
+type buttonReply struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+// ---- Client initialisation ----
 
 // httpClient is shared across all calls to reuse TCP connections via keep-alive.
 var httpClient = &http.Client{Timeout: 10 * time.Second}
@@ -40,16 +77,41 @@ func initWAConfig() {
 	})
 }
 
+// ---- Public send functions ----
+
 func SendWhatsAppMessage(to, body string) error {
 	initWAConfig()
-
-	payload := WhatsAppMessageReq{
+	return doPost(textMessageReq{
 		MessagingProduct: "whatsapp",
 		To:               to,
 		Type:             "text",
-		Text:             &TextObject{Body: body},
-	}
+		Text:             &textBody{Text: body},
+	})
+}
 
+func SendWhatsAppButtons(to, bodyText string, buttons []ReplyButton) error {
+	initWAConfig()
+	actionButtons := make([]actionButton, len(buttons))
+	for i, b := range buttons {
+		actionButtons[i] = actionButton{
+			Type:  "reply",
+			Reply: buttonReply{ID: b.ID, Title: b.Title},
+		}
+	}
+	return doPost(interactiveMessageReq{
+		MessagingProduct: "whatsapp",
+		To:               to,
+		Type:             "interactive",
+		Interactive: interactive{
+			Type:   "button",
+			Body:   textBody{Text: bodyText},
+			Action: buttonAction{Buttons: actionButtons},
+		},
+	})
+}
+
+// doPost marshals payload, sends it to the WhatsApp API, and handles errors.
+func doPost(payload any) error {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)

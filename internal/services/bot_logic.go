@@ -15,15 +15,23 @@ import (
 type ConversationStep string
 
 const (
-	StepNew             ConversationStep = "NEW"
-	StepChoosingOption  ConversationStep = "CHOOSING_OPTION"
-	StepWaitingName     ConversationStep = "WAITING_NAME"
-	StepWaitingDate     ConversationStep = "WAITING_DATE"
+	StepNew                 ConversationStep = "NEW"
+	StepChoosingOption      ConversationStep = "CHOOSING_OPTION"
+	StepWaitingName         ConversationStep = "WAITING_NAME"
+	StepWaitingDate         ConversationStep = "WAITING_DATE"
+	StepManagingAppointment ConversationStep = "MANAGING_APPOINTMENT"
+)
+
+// Button IDs for the appointment management interactive message.
+const (
+	btnConfirmAppointment = "btn_confirm"
+	btnCancelAppointment  = "btn_cancel"
 )
 
 // TempDataStruct holds transient data between conversation steps.
 type TempDataStruct struct {
-	DraftName string `json:"draft_name"`
+	DraftName     string `json:"draft_name"`
+	AppointmentID uint   `json:"appointment_id,omitempty"`
 }
 
 // ---- State machine infrastructure ----
@@ -53,6 +61,13 @@ func (c *StepContext) LoadTempData(dst interface{}) error {
 	return json.Unmarshal(c.Conv.TempData, dst)
 }
 
+// ReplyButtons sends an interactive button message to the conversation's phone number.
+func (c *StepContext) ReplyButtons(body string, buttons []ReplyButton) {
+	if err := SendWhatsAppButtons(c.Msg.From, body, buttons); err != nil {
+		slog.Error("failed to send whatsapp buttons", "to", c.Msg.From, "error", err)
+	}
+}
+
 // StepHandlerFunc is the signature every step handler must implement.
 // Return a non-nil error only for unexpected system failures; user-input
 // errors should reply directly and return nil.
@@ -70,6 +85,7 @@ func NewStateMachine() *StateMachine {
 	sm.Register(StepChoosingOption, handleChoosingOption)
 	sm.Register(StepWaitingName, handleWaitingName)
 	sm.Register(StepWaitingDate, handleWaitingDate)
+	sm.Register(StepManagingAppointment, handleManagingAppointment)
 	return sm
 }
 
@@ -133,19 +149,65 @@ func handleChoosingOption(ctx *StepContext) error {
 		}
 		if appt == nil {
 			ctx.Reply("No encontramos ninguna cita registrada para tu número.")
-		} else {
-			ctx.Reply(fmt.Sprintf(
-				"📋 *Tu cita más reciente:*\n\nCliente: %s\nFecha: %s\nEstado: %s",
+			return ctx.Transition(StepNew, nil)
+		}
+		ctx.ReplyButtons(
+			fmt.Sprintf("📋 *Tu cita más reciente:*\n\nCliente: %s\nFecha: %s\nEstado: %s",
 				appt.ClientName,
 				appt.StartTime.In(bogotaLoc).Format("02/01/2006 03:04 PM"),
 				appt.Status,
-			))
-		}
-		return ctx.Transition(StepNew, nil)
+			),
+			[]ReplyButton{
+				{ID: btnConfirmAppointment, Title: "✅ Confirmar"},
+				{ID: btnCancelAppointment, Title: "❌ Cancelar"},
+			},
+		)
+		return ctx.Transition(StepManagingAppointment, TempDataStruct{AppointmentID: appt.ID})
 	default:
 		ctx.Reply("Por favor responde *1* para agendar o *2* para consultar tu cita:")
 		return nil
 	}
+}
+
+func handleManagingAppointment(ctx *StepContext) error {
+	if ctx.Msg.Type != "interactive" {
+		ctx.Reply("Por favor usa los botones para confirmar o cancelar tu cita.")
+		return nil
+	}
+
+	var data TempDataStruct
+	if err := ctx.LoadTempData(&data); err != nil || data.AppointmentID == 0 {
+		slog.Error("failed to load appointment ID from temp data", "phone", ctx.Msg.From, "error", err)
+		ctx.Reply("Error interno. Por favor comienza de nuevo.")
+		return ctx.Transition(StepNew, nil)
+	}
+
+	switch ctx.Msg.Interactive.ButtonReply.ID {
+	case btnConfirmAppointment:
+		if err := UpdateAppointmentStatus(ctx.DB, data.AppointmentID, StatusConfirmed); err != nil {
+			slog.Error("failed to confirm appointment", "phone", ctx.Msg.From, "appointment_id", data.AppointmentID, "error", err)
+			ctx.Reply("No pudimos confirmar tu cita. Intenta más tarde.")
+			return nil
+		}
+		slog.Info("appointment confirmed", "phone", ctx.Msg.From, "appointment_id", data.AppointmentID)
+		ctx.Reply("✅ ¡Tu cita ha sido *confirmada*! Te esperamos.")
+
+	case btnCancelAppointment:
+		if err := UpdateAppointmentStatus(ctx.DB, data.AppointmentID, StatusCancelled); err != nil {
+			slog.Error("failed to cancel appointment", "phone", ctx.Msg.From, "appointment_id", data.AppointmentID, "error", err)
+			ctx.Reply("No pudimos cancelar tu cita. Intenta más tarde.")
+			return nil
+		}
+		slog.Info("appointment cancelled", "phone", ctx.Msg.From, "appointment_id", data.AppointmentID)
+		ctx.Reply("❌ Tu cita ha sido *cancelada*.")
+
+	default:
+		slog.Warn("unknown button reply", "phone", ctx.Msg.From, "button_id", ctx.Msg.Interactive.ButtonReply.ID)
+		ctx.Reply("Opción no reconocida. Por favor usa los botones.")
+		return nil
+	}
+
+	return ctx.Transition(StepNew, nil)
 }
 
 func handleWaitingName(ctx *StepContext) error {

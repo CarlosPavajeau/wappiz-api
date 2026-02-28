@@ -4,12 +4,23 @@ type TextObject struct {
 	Body string `json:"body"`
 }
 
+type ButtonReply struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+type InteractiveReply struct {
+	Type        string      `json:"type"`
+	ButtonReply ButtonReply `json:"button_reply"`
+}
+
 type WhatsAppMessage struct {
-	From      string     `json:"from"`
-	ID        string     `json:"id"`
-	Timestamp string     `json:"timestamp"`
-	Type      string     `json:"type"`
-	Text      TextObject `json:"text"`
+	From        string           `json:"from"`
+	ID          string           `json:"id"`
+	Timestamp   string           `json:"timestamp"`
+	Type        string           `json:"type"`
+	Text        TextObject       `json:"text"`
+	Interactive InteractiveReply `json:"interactive"`
 }
 
 type WebhookPayload struct {
@@ -18,10 +29,10 @@ type WebhookPayload struct {
 		ID      string `json:"id"`
 		Changes []struct {
 			Value struct {
-				MessagingProduct string                 `json:"messaging_product"`
-				Metadata         map[string]interface{} `json:"metadata"`
-				Contacts         []interface{}          `json:"contacts"`
-				Messages         []WhatsAppMessage      `json:"messages"` // Aquí usamos el tipo nombrado
+				MessagingProduct string            `json:"messaging_product"`
+				Metadata         map[string]any    `json:"metadata"`
+				Contacts         []any             `json:"contacts"`
+				Messages         []WhatsAppMessage `json:"messages"`
 			} `json:"value"`
 			Field string `json:"field"`
 		} `json:"changes"`

@@ -19,7 +19,11 @@ const (
 // AppointmentStatus represents the lifecycle state of an appointment.
 type AppointmentStatus string
 
-const StatusConfirmed AppointmentStatus = "CONFIRMED"
+const (
+	StatusPending   AppointmentStatus = "PENDING"
+	StatusConfirmed AppointmentStatus = "CONFIRMED"
+	StatusCancelled AppointmentStatus = "CANCELLED"
+)
 
 // Sentinel errors allow callers to distinguish failure modes with errors.Is.
 var (
@@ -62,7 +66,7 @@ func CheckAvailability(db *gorm.DB, startTime time.Time) (bool, error) {
 	var count int64
 
 	err := db.Model(&models.Appointment{}).
-		Where("status = ? AND start_time < ? AND end_time > ?", StatusConfirmed, endTime, startTime).
+		Where("status IN ? AND start_time < ? AND end_time > ?", []AppointmentStatus{StatusPending, StatusConfirmed}, endTime, startTime).
 		Count(&count).Error
 	if err != nil {
 		return false, fmt.Errorf("check availability: %w", err)
@@ -85,13 +89,24 @@ func GetLatestAppointment(db *gorm.DB, phone string) (*models.Appointment, error
 	return &appt, nil
 }
 
+func UpdateAppointmentStatus(db *gorm.DB, id uint, status AppointmentStatus) error {
+	result := db.Model(&models.Appointment{}).Where("id = ?", id).Update("status", string(status))
+	if result.Error != nil {
+		return fmt.Errorf("update appointment status: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("appointment %d not found", id)
+	}
+	return nil
+}
+
 func CreateAppointment(db *gorm.DB, phone, name string, startTime time.Time) error {
 	appointment := models.Appointment{
 		ClientPhone: phone,
 		ClientName:  name,
 		StartTime:   startTime,
 		EndTime:     startTime.Add(AppointmentDuration),
-		Status:      string(StatusConfirmed),
+		Status:      string(StatusPending),
 	}
 	if err := db.Create(&appointment).Error; err != nil {
 		return fmt.Errorf("create appointment: %w", err)
