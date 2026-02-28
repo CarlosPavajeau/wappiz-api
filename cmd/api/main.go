@@ -1,29 +1,22 @@
 package main
 
 import (
-	"log"
-	"os"
-
-	"github.com/gin-gonic/gin"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-
+	"appointments/internal/database"
 	"appointments/internal/handlers"
 	"appointments/internal/models"
+	"log"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	dsn := os.Getenv("DB_URL")
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+	db, err := database.InitDB()
 	if err != nil {
-		log.Fatal("Fallo al conectar a la DB:", err)
+		log.Fatal("Cannot connect to database", err)
 	}
 
 	if err := db.AutoMigrate(&models.Conversation{}, &models.Appointment{}); err != nil {
-		log.Fatal("Error migrando base de datos: ", err)
+		log.Fatal("Failed to migrate the database: ", err)
 	}
 
 	r := gin.Default()
