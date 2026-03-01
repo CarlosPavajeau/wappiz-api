@@ -49,8 +49,6 @@ func (r customerRow) toDomain() Customer {
 }
 
 func (r *pgRepository) FindOrCreate(ctx context.Context, tenantID uuid.UUID, phone string) (*Customer, error) {
-	// INSERT ... ON CONFLICT es atómico — evita race conditions si dos mensajes
-	// del mismo número llegan al mismo tiempo
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO customers (id, tenant_id, phone_number)
 		VALUES ($1, $2, $3)
@@ -60,7 +58,6 @@ func (r *pgRepository) FindOrCreate(ctx context.Context, tenantID uuid.UUID, pho
 		return nil, err
 	}
 
-	// Después del upsert, leer el registro final
 	var row customerRow
 	err = r.db.GetContext(ctx, &row, `
 		SELECT id, tenant_id, phone_number, name, is_blocked, created_at
