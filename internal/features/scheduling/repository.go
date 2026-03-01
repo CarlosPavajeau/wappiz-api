@@ -7,8 +7,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	apperrors "appointments/internal/shared/errors"
 
 	"github.com/google/uuid"
@@ -64,7 +62,7 @@ func (r *pgSessionRepository) FindActive(ctx context.Context, tenantID, customer
         LIMIT 1
     `, tenantID, customerID)
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, apperrors.ErrSessionNotFound
 	}
 	if err != nil {
