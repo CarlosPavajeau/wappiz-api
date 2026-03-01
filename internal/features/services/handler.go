@@ -1,6 +1,7 @@
 package services
 
 import (
+	"appointments/internal/shared/jwt"
 	"errors"
 	"net/http"
 
@@ -18,11 +19,14 @@ func NewHandler(uc *UseCases) *Handler {
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	g := r.Group("/api/v1/services")
-	g.GET("", h.List)
-	g.POST("", h.Create)
-	g.PUT("/:id", h.Update)
-	g.DELETE("/:id", h.Delete)
-	g.PUT("/sort-order", h.UpdateSortOrder)
+	g.Use(jwt.AuthMiddleware())
+	{
+		g.GET("", h.List)
+		g.POST("", h.Create)
+		g.PUT("/:id", h.Update)
+		g.DELETE("/:id", h.Delete)
+		g.PUT("/sort-order", h.UpdateSortOrder)
+	}
 }
 
 type createRequest struct {
@@ -74,13 +78,7 @@ func toResponse(s Service) serviceResponse {
 }
 
 func (h *Handler) List(c *gin.Context) {
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
+	tenantID := jwt.TenantIDFromContext(c)
 
 	svcs, err := h.useCases.GetAll(c.Request.Context(), tenantID)
 	if err != nil {
@@ -102,13 +100,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
+	tenantID := jwt.TenantIDFromContext(c)
 
 	svc, err := h.useCases.Create(c.Request.Context(), CreateServiceInput{
 		TenantID:        tenantID,
@@ -143,13 +135,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
+	tenantID := jwt.TenantIDFromContext(c)
 
 	svc, err := h.useCases.Update(c.Request.Context(), UpdateServiceInput{
 		ID:              id,
@@ -180,13 +166,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
+	tenantID := jwt.TenantIDFromContext(c)
 
 	if err := h.useCases.Delete(c.Request.Context(), id, tenantID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete service"})
@@ -203,13 +183,7 @@ func (h *Handler) UpdateSortOrder(c *gin.Context) {
 		return
 	}
 
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
+	tenantID := jwt.TenantIDFromContext(c)
 
 	items := make([]SortItem, len(req.Order))
 	for i, o := range req.Order {
