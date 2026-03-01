@@ -427,9 +427,14 @@ func (sm *StateMachine) handleCancelFlow(ctx context.Context, msg IncomingMessag
 		})
 	}
 
-	sections := []whatsapp.Section{{Title: "Selecciona la cita a cancelar", Rows: rows}}
+	sections := []whatsapp.Section{
+		{
+			Title: "Elige una cita",
+			Rows:  rows,
+		},
+	}
 	return sm.wa.SendList(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
-		"¿Cuál cita deseas cancelar?", sections)
+		"¿Cuál cita deseas cancelar? 🗓️", sections)
 }
 
 func (sm *StateMachine) sendServiceList(ctx context.Context, msg IncomingMessage, session *Session) error {
