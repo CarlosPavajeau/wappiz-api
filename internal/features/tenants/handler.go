@@ -1,10 +1,10 @@
 package tenants
 
 import (
+	"appointments/internal/shared/jwt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -19,13 +19,16 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	public := r.Group("/api/v1")
 	{
 		public.POST("/tenants/register", h.Register)
+		public.POST("/tenants/login", h.Login)
 	}
 
 	protected := r.Group("/api/v1/tenants")
-
-	protected.GET("/me", h.GetMe)
-	protected.PUT("/settings", h.UpdateSettings)
-	protected.POST("/whatsapp", h.ConnectWhatsapp)
+	protected.Use(jwt.AuthMiddleware())
+	{
+		protected.GET("/me", h.GetMe)
+		protected.PUT("/settings", h.UpdateSettings)
+		protected.POST("/whatsapp", h.ConnectWhatsapp)
+	}
 }
 
 type registerRequest struct {
@@ -33,6 +36,12 @@ type registerRequest struct {
 	Timezone string `json:"timezone" binding:"required"`
 	Email    string `json:"email"    binding:"required,email"`
 	Password string `json:"password" binding:"required,min=8"`
+}
+
+type loginRequest struct {
+	Slug     string `json:"slug"     binding:"required"`
+	Email    string `json:"email"    binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }
 
 type connectWhatsappRequest struct {
@@ -66,6 +75,12 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
+	token, err := jwt.Generate(output.User.ID, output.Tenant.ID, output.User.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token generation failed"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"tenant": gin.H{
 			"id":   output.Tenant.ID,
@@ -73,23 +88,52 @@ func (h *Handler) Register(c *gin.Context) {
 			"slug": output.Tenant.Slug,
 			"plan": output.Tenant.Plan,
 		},
+		"token": token,
+	})
+}
+
+func (h *Handler) Login(c *gin.Context) {
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, tenant, err := h.useCases.Login(c.Request.Context(), LoginInput{
+		TenantSlug: req.Slug,
+		Email:      req.Email,
+		Password:   req.Password,
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	token, err := jwt.Generate(user.ID, tenant.ID, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token generation failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tenant": gin.H{
+			"id":   tenant.ID,
+			"name": tenant.Name,
+			"slug": tenant.Slug,
+			"plan": tenant.Plan,
+		},
+		"token": token,
 	})
 }
 
 func (h *Handler) GetMe(c *gin.Context) {
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
-
+	tenantID := jwt.TenantIDFromContext(c)
 	tenant, err := h.useCases.repo.FindByID(c.Request.Context(), tenantID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "tenant not found"})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":                      tenant.ID,
 		"name":                    tenant.Name,
@@ -108,14 +152,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	rawTenantID := c.Query("tenant_id")
-	tenantID, parseErr := uuid.Parse(rawTenantID)
-
-	if parseErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
-
+	tenantID := jwt.TenantIDFromContext(c)
 	err := h.useCases.UpdateSettings(c.Request.Context(), tenantID, TenantSettings{
 		WelcomeMessage:  req.WelcomeMessage,
 		BotName:         req.BotName,
@@ -136,14 +173,7 @@ func (h *Handler) ConnectWhatsapp(c *gin.Context) {
 		return
 	}
 
-	rawTenantID := c.Query("tenant_id")
-	tenantID, err := uuid.Parse(rawTenantID)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
-		return
-	}
-
+	tenantID := jwt.TenantIDFromContext(c)
 	cfg, err := h.useCases.ConnectWhatsapp(c.Request.Context(), ConnectWhatsappInput{
 		TenantID:           tenantID,
 		WabaID:             req.WabaID,

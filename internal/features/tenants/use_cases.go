@@ -10,6 +10,7 @@ import (
 	apperrors "appointments/internal/shared/errors"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UseCases struct {
@@ -29,6 +30,7 @@ type RegisterTenantInput struct {
 
 type RegisterTenantOutput struct {
 	Tenant *Tenant
+	User   *TenantUser
 }
 
 func (uc *UseCases) RegisterTenant(ctx context.Context, input RegisterTenantInput) (*RegisterTenantOutput, error) {
@@ -51,7 +53,24 @@ func (uc *UseCases) RegisterTenant(ctx context.Context, input RegisterTenantInpu
 		return nil, err
 	}
 
-	return &RegisterTenantOutput{Tenant: tenant}, nil
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &TenantUser{
+		ID:           uuid.New(),
+		TenantID:     tenant.ID,
+		Email:        input.Email,
+		PasswordHash: string(hash),
+		Role:         "admin",
+	}
+
+	if err := uc.repo.CreateUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return &RegisterTenantOutput{Tenant: tenant, User: user}, nil
 }
 
 type ConnectWhatsappInput struct {
@@ -89,6 +108,30 @@ func (uc *UseCases) VerifyWebhook(ctx context.Context, phoneNumberID string) err
 	now := time.Now()
 	cfg.VerifiedAt = &now
 	return uc.repo.UpdateWhatsappConfig(ctx, cfg)
+}
+
+type LoginInput struct {
+	TenantSlug string
+	Email      string
+	Password   string
+}
+
+func (uc *UseCases) Login(ctx context.Context, input LoginInput) (*TenantUser, *Tenant, error) {
+	tenant, err := uc.repo.FindBySlug(ctx, input.TenantSlug)
+	if err != nil {
+		return nil, nil, apperrors.ErrNotFound
+	}
+
+	user, err := uc.repo.FindUserByEmail(ctx, tenant.ID, input.Email)
+	if err != nil {
+		return nil, nil, apperrors.ErrNotFound
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		return nil, nil, apperrors.ErrNotFound
+	}
+
+	return user, tenant, nil
 }
 
 func (uc *UseCases) UpdateSettings(ctx context.Context, tenantID uuid.UUID, settings TenantSettings) error {
