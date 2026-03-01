@@ -41,7 +41,7 @@ func NewReminderJob(
 }
 
 func (j *ReminderJob) Run(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
 	log.Println("reminder job started")

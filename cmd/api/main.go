@@ -87,7 +87,7 @@ func main() {
 	// ── Background Jobs ───────────────────────────────────────────
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Reminder job — run every 5 minutes
+	// Reminder job — run every minute
 	reminderJob := scheduling.NewReminderJob(
 		appointmentRepo,
 		serviceRepo,
