@@ -1,10 +1,9 @@
 package tenants
 
 import (
+	"appointments/internal/platform/database"
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"appointments/internal/shared/crypto"
@@ -33,7 +32,7 @@ func (r *pgRepository) FindByID(ctx context.Context, id uuid.UUID) (*Tenant, err
 		WHERE id = $1 AND is_active = true
 	`, id)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
@@ -64,7 +63,7 @@ func (r *pgRepository) FindBySlug(ctx context.Context, slug string) (*Tenant, er
 		WHERE slug = $1 AND is_active = true
 	`, slug)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
@@ -135,7 +134,7 @@ func (r *pgRepository) FindWhatsappConfig(ctx context.Context, tenantID uuid.UUI
 		LIMIT 1
 	`, tenantID)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
@@ -180,7 +179,7 @@ func (r *pgRepository) FindWhatsappConfigByPhoneNumberID(ctx context.Context, ph
 		LIMIT 1
 	`, phoneNumberID)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, nil, apperrors.ErrNotFound
 	}
 	if err != nil {

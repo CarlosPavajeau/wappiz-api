@@ -1,14 +1,13 @@
 package services
 
 import (
+	"appointments/internal/platform/database"
 	"context"
-	"errors"
 	"time"
 
 	apperrors "appointments/internal/shared/errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -90,7 +89,7 @@ func (r *pgRepository) FindByID(ctx context.Context, id uuid.UUID) (*Service, er
 		WHERE id = $1 AND is_active = true
 	`, id)
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {

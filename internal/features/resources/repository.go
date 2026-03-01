@@ -1,15 +1,14 @@
 package resources
 
 import (
+	"appointments/internal/platform/database"
 	"context"
 
-	"errors"
 	"time"
 
 	apperrors "appointments/internal/shared/errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -176,7 +175,7 @@ func (r *pgRepository) FindByID(ctx context.Context, id uuid.UUID) (*Resource, e
 		WHERE id = $1 AND is_active = true
 	`, id)
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
@@ -314,7 +313,7 @@ func (r *pgRepository) FindOverrideByDate(ctx context.Context, resourceID uuid.U
 		LIMIT 1
 	`, resourceID, date.Format("2006-01-02"))
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, nil // no override, valid day
 	}
 	if err != nil {

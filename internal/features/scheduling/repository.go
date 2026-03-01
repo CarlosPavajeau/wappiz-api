@@ -1,10 +1,9 @@
 package scheduling
 
 import (
+	"appointments/internal/platform/database"
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"time"
 
 	apperrors "appointments/internal/shared/errors"
@@ -62,7 +61,7 @@ func (r *pgSessionRepository) FindActive(ctx context.Context, tenantID, customer
         LIMIT 1
     `, tenantID, customerID)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, apperrors.ErrSessionNotFound
 	}
 	if err != nil {
@@ -291,7 +290,7 @@ func (r *pgAvailabilityRepository) GetOverrides(ctx context.Context, resourceID 
         LIMIT 1
     `, resourceID, date.Format("2006-01-02"))
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if database.IsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
