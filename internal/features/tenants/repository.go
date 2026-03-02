@@ -297,7 +297,7 @@ func (r *pgRepository) FindUserByEmail(ctx context.Context, email string) (*Tena
 	err := r.db.GetContext(ctx, &row, `
 		SELECT id, tenant_id, email, password_hash, role, created_at
 		FROM tenant_users
-		WHERE email = $2
+		WHERE email = $1
 	`, email)
 
 	if database.IsNotFound(err) {
