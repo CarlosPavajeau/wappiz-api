@@ -1,6 +1,7 @@
 package main
 
 import (
+	"appointments/internal/platform/mailer"
 	"context"
 	"log"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"appointments/internal/config"
 	"appointments/internal/features/customers"
+	"appointments/internal/features/onboarding"
 	"appointments/internal/features/resources"
 	"appointments/internal/features/scheduling"
 	"appointments/internal/features/services"
@@ -34,6 +36,7 @@ func main() {
 	// ── Infra ───────────────────────────────────────────
 	db := database.Connect(cfg.DatabaseURL)
 	wa := whatsapp.NewClient(cfg.WhatsappBaseURL, cfg.WhatsappAPIVersion)
+	logMailer := mailer.NewLogMailer()
 
 	// ── Repos ──────────────────────────────────────────────
 	tenantRepo := tenants.NewRepository(db, encKey)
@@ -44,8 +47,17 @@ func main() {
 	appointmentRepo := scheduling.NewAppointmentRepository(db)
 	availabilityRepo := scheduling.NewAvailabilityRepository(db)
 	refreshTokenRepo := tenants.NewRefreshTokenRepository(db)
+	onboardingRepo := onboarding.NewRepository(db)
 
 	// ── Use Cases ─────────────────────────────────────────────────
+	onboardingUC := onboarding.NewUseCases(
+		onboardingRepo,
+		tenantRepo,
+		resourceRepo,
+		serviceRepo,
+		logMailer,
+		cfg.AdminEmail,
+	)
 	tenantUC := tenants.NewUseCases(tenantRepo, refreshTokenRepo)
 	serviceUC := services.NewUseCases(serviceRepo)
 	resourceUC := resources.NewUseCases(resourceRepo)
@@ -84,11 +96,13 @@ func main() {
 	serviceHandler := services.NewHandler(serviceUC)
 	resourceHandler := resources.NewHandler(resourceUC)
 	customerHandler := customers.NewHandler(customerUC)
+	onboardingHandler := onboarding.NewHandler(onboardingUC)
 
 	tenantHandler.RegisterRoutes(r)
 	serviceHandler.RegisterRoutes(r)
 	resourceHandler.RegisterRoutes(r)
 	customerHandler.RegisterRoutes(r)
+	onboardingHandler.RegisterRoutes(r)
 
 	// ── Background Jobs ───────────────────────────────────────────
 	ctx, cancel := context.WithCancel(context.Background())

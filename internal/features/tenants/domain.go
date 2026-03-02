@@ -33,6 +33,7 @@ type TenantSettings struct {
 	WelcomeMessage  string `json:"welcome_message,omitempty"`
 	BotName         string `json:"bot_name,omitempty"`
 	CancellationMsg string `json:"cancellation_message,omitempty"`
+	ContactEmail    string `json:"contact_email,omitempty"`
 }
 
 type WhatsappConfig struct {
@@ -44,6 +45,7 @@ type WhatsappConfig struct {
 	AccessToken        string // memory decrypted, never stored in plaintext
 	TokenExpiresAt     *time.Time
 	IsActive           bool
+	ActivationStatus   string
 	VerifiedAt         *time.Time
 	CreatedAt          time.Time
 	UpdatedAt          time.Time

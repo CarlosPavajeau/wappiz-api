@@ -6,6 +6,7 @@ import (
 	apperrors "appointments/internal/shared/errors"
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +27,23 @@ type Repository interface {
 	CreateUser(ctx context.Context, u *TenantUser) error
 	FindUserByEmail(ctx context.Context, email string) (*TenantUser, error)
 	FindUserByID(ctx context.Context, id uuid.UUID) (*TenantUser, error)
+	CreateWhatsappConfigPending(ctx context.Context, input CreateWhatsappConfigPendingInput) error
+	FindPendingActivations(ctx context.Context) ([]WhatsappConfig, error)
+	ActivateWhatsappConfig(ctx context.Context, input ActivateWhatsappConfigInput) error
+}
+
+type CreateWhatsappConfigPendingInput struct {
+	TenantID     uuid.UUID
+	ContactEmail string
+	Notes        string
+}
+
+type ActivateWhatsappConfigInput struct {
+	TenantID           uuid.UUID
+	PhoneNumberID      string
+	DisplayPhoneNumber string
+	WABAID             string
+	AccessToken        string
 }
 
 type pgRepository struct {
@@ -329,6 +347,81 @@ func (r *pgRepository) FindUserByID(ctx context.Context, id uuid.UUID) (*TenantU
 		Role:         row.Role,
 		CreatedAt:    row.CreatedAt,
 	}, nil
+}
+
+func (r *pgRepository) CreateWhatsappConfigPending(ctx context.Context, input CreateWhatsappConfigPendingInput) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO tenant_whatsapp_configs
+			(id, tenant_id, activation_status, activation_requested_at, activation_notes)
+		VALUES ($1, $2, 'pending', NOW(), $3)
+		ON CONFLICT (tenant_id) DO UPDATE
+		SET
+			activation_status       = 'pending',
+			activation_requested_at = NOW(),
+			activation_notes        = EXCLUDED.activation_notes
+	`, uuid.New(), input.TenantID, input.Notes)
+	return err
+}
+
+func (r *pgRepository) FindPendingActivations(ctx context.Context) ([]WhatsappConfig, error) {
+	var rows []struct {
+		ID                    uuid.UUID  `db:"id"`
+		TenantID              uuid.UUID  `db:"tenant_id"`
+		TenantName            string     `db:"tenant_name"`
+		ActivationStatus      string     `db:"activation_status"`
+		ActivationRequestedAt *time.Time `db:"activation_requested_at"`
+		ActivationNotes       string     `db:"activation_notes"`
+	}
+
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT
+			wc.id,
+			wc.tenant_id,
+			t.name AS tenant_name,
+			wc.activation_status,
+			wc.activation_requested_at,
+			COALESCE(wc.activation_notes, '') AS activation_notes
+		FROM tenant_whatsapp_configs wc
+		JOIN tenants t ON t.id = wc.tenant_id
+		WHERE wc.activation_status = 'pending'
+		ORDER BY wc.activation_requested_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]WhatsappConfig, len(rows))
+	for i, row := range rows {
+		result[i] = WhatsappConfig{
+			ID:               row.ID,
+			TenantID:         row.TenantID,
+			ActivationStatus: row.ActivationStatus,
+		}
+	}
+	return result, nil
+}
+
+func (r *pgRepository) ActivateWhatsappConfig(ctx context.Context, input ActivateWhatsappConfigInput) error {
+	encryptedToken, err := crypto.Encrypt(input.AccessToken, r.encryptionKey)
+	if err != nil {
+		return fmt.Errorf("encrypt token: %w", err)
+	}
+
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE tenant_whatsapp_configs
+		SET
+			waba_id               = $1,
+			phone_number_id       = $2,
+			display_phone_number  = $3,
+			access_token          = $4,
+			activation_status     = 'active',
+			is_active             = true,
+			verified_at           = NOW()
+		WHERE tenant_id = $5
+	`, input.WABAID, input.PhoneNumberID,
+		input.DisplayPhoneNumber, encryptedToken,
+		input.TenantID)
+	return err
 }
 
 func (r *pgRepository) rowToConfig(row whatsappConfigRow) (*WhatsappConfig, error) {

@@ -15,6 +15,7 @@ type Config struct {
 	WebhookVerifyToken string
 	WhatsappAppSecret  string
 	EncryptionKey      string
+	AdminEmail         string
 }
 
 func Load() *Config {
@@ -30,6 +31,7 @@ func Load() *Config {
 		WebhookVerifyToken: mustGet("WEBHOOK_VERIFY_TOKEN"),
 		WhatsappAppSecret:  mustGet("WHATSAPP_APP_SECRET"),
 		EncryptionKey:      mustGet("ENCRYPTION_KEY"),
+		AdminEmail:         mustGet("ADMIN_EMAIL"),
 	}
 }
 
