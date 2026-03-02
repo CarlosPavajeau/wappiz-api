@@ -111,14 +111,30 @@ func (r *pgRepository) Create(ctx context.Context, t *Tenant) error {
 		return err
 	}
 
-	_, err = r.db.ExecContext(ctx, `
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO tenants
 			(id, name, slug, timezone, currency, plan, appointments_this_month,
 			 month_reset_at, is_active, settings)
 		VALUES ($1,$2,$3,$4,$5,$6,0,$7,true,$8)
 	`, t.ID, t.Name, t.Slug, t.Timezone, t.Currency, string(t.Plan),
 		firstDayOfNextMonth(), settings)
-	return err
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO onboarding_progress
+			(id, tenant_id, current_step)
+		VALUES ($1,$2,$3)
+	`, uuid.New(), t.ID, 1,
+	); err != nil {
+		return fmt.Errorf("insert onboarding progress: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (r *pgRepository) Update(ctx context.Context, t *Tenant) error {
