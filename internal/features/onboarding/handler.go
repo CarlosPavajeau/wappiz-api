@@ -4,6 +4,7 @@ package onboarding
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -165,6 +166,9 @@ func (h *Handler) CompleteStepWhatsApp(c *gin.Context) {
 		Notes:        req.Notes,
 	}); err != nil {
 		statusCode, msg := resolveError(err)
+		if statusCode == http.StatusInternalServerError {
+			log.Printf("onboarding: CompleteStepWhatsApp 500 tenant_id=%s err=%v", tenantID, err)
+		}
 		c.JSON(statusCode, gin.H{"error": msg})
 		return
 	}

@@ -3,6 +3,7 @@ package onboarding
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"appointments/internal/features/resources"
 	"appointments/internal/features/services"
@@ -170,31 +171,42 @@ type StepWhatsAppInput struct {
 }
 
 func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsAppInput) error {
+	log.Printf("onboarding: step4 start tenant_id=%s", input.TenantID)
+
 	progress, err := uc.repo.FindByTenant(ctx, input.TenantID)
 	if err != nil {
+		log.Printf("onboarding: step4 find_progress error tenant_id=%s err=%v", input.TenantID, err)
 		return err
 	}
+	log.Printf("onboarding: step4 progress current_step=%d tenant_id=%s", progress.CurrentStep, input.TenantID)
 
 	if !progress.CanAccessStep(StepWhatsApp) {
+		log.Printf("onboarding: step4 not_available current_step=%d tenant_id=%s", progress.CurrentStep, input.TenantID)
 		return ErrStepNotAvailable
 	}
 
 	tenant, err := uc.tenantRepo.FindByID(ctx, input.TenantID)
 	if err != nil {
+		log.Printf("onboarding: step4 find_tenant error tenant_id=%s err=%v", input.TenantID, err)
 		return fmt.Errorf("find tenant: %w", err)
 	}
+	log.Printf("onboarding: step4 tenant_found name=%q tenant_id=%s", tenant.Name, input.TenantID)
 
 	if err := uc.tenantRepo.CreateWhatsappConfigPending(ctx, tenants.CreateWhatsappConfigPendingInput{
 		TenantID:     input.TenantID,
 		ContactEmail: input.ContactEmail,
 		Notes:        input.Notes,
 	}); err != nil {
+		log.Printf("onboarding: step4 create_whatsapp_config_pending error tenant_id=%s err=%v", input.TenantID, err)
 		return fmt.Errorf("create whatsapp config: %w", err)
 	}
+	log.Printf("onboarding: step4 whatsapp_config_pending created tenant_id=%s", input.TenantID)
 
 	if err := uc.repo.Complete(ctx, input.TenantID); err != nil {
+		log.Printf("onboarding: step4 complete_onboarding error tenant_id=%s err=%v", input.TenantID, err)
 		return fmt.Errorf("complete onboarding: %w", err)
 	}
+	log.Printf("onboarding: step4 onboarding completed tenant_id=%s", input.TenantID)
 
 	go uc.mailer.Send(ctx, mailer.Email{
 		To:      input.ContactEmail,
