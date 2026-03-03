@@ -16,6 +16,8 @@ type Config struct {
 	WhatsappAppSecret  string
 	EncryptionKey      string
 	AdminEmail         string
+	ResendAPIKey       string
+	ResendFromEmail    string
 }
 
 func Load() *Config {
@@ -32,6 +34,8 @@ func Load() *Config {
 		WhatsappAppSecret:  mustGet("WHATSAPP_APP_SECRET"),
 		EncryptionKey:      mustGet("ENCRYPTION_KEY"),
 		AdminEmail:         mustGet("ADMIN_EMAIL"),
+		ResendAPIKey:       mustGet("RESEND_API_KEY"),
+		ResendFromEmail:    mustGet("RESEND_FROM_EMAIL"),
 	}
 }
 

@@ -36,7 +36,7 @@ func main() {
 	// ── Infra ───────────────────────────────────────────
 	db := database.Connect(cfg.DatabaseURL)
 	wa := whatsapp.NewClient(cfg.WhatsappBaseURL, cfg.WhatsappAPIVersion)
-	logMailer := mailer.NewLogMailer()
+	resendMailer := mailer.NewResendMailer(cfg.ResendAPIKey, cfg.ResendFromEmail)
 
 	// ── Repos ──────────────────────────────────────────────
 	tenantRepo := tenants.NewRepository(db, encKey)
@@ -55,7 +55,7 @@ func main() {
 		tenantRepo,
 		resourceRepo,
 		serviceRepo,
-		logMailer,
+		resendMailer,
 		cfg.AdminEmail,
 	)
 	tenantUC := tenants.NewUseCases(tenantRepo, refreshTokenRepo)
