@@ -196,21 +196,18 @@ func (h *Handler) Logout(c *gin.Context) {
 }
 
 func (h *Handler) GetMe(c *gin.Context) {
-	tenantID := jwt.TenantIDFromContext(c)
-	tenant, err := h.useCases.repo.FindByID(c.Request.Context(), tenantID)
+	userID := jwt.UserIDFromContext(c)
+	user, err := h.useCases.repo.FindUserByID(c.Request.Context(), userID)
+
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "tenant not found"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":                      tenant.ID,
-		"name":                    tenant.Name,
-		"slug":                    tenant.Slug,
-		"timezone":                tenant.Timezone,
-		"plan":                    tenant.Plan,
-		"appointments_this_month": tenant.AppointmentsThisMonth,
-		"settings":                tenant.Settings,
+		"id":    user.ID,
+		"name":  user.Role,
+		"email": user.Email,
 	})
 }
 
