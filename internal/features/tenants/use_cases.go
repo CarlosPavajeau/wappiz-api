@@ -86,6 +86,6 @@ func (uc *UseCases) ActivateWhatsappConfig(ctx context.Context, input ActivateWh
 	return uc.repo.ActivateWhatsappConfig(ctx, input)
 }
 
-func (uc *UseCases) FindPendingActivations(ctx context.Context) ([]WhatsappConfig, error) {
+func (uc *UseCases) FindPendingActivations(ctx context.Context) ([]PendingActivation, error) {
 	return uc.repo.FindPendingActivations(ctx)
 }
