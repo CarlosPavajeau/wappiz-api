@@ -1,7 +1,6 @@
 package main
 
 import (
-	"appointments/internal/platform/mailer"
 	"context"
 	"log"
 	"net/http"
@@ -14,13 +13,16 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"appointments/internal/config"
+	"appointments/internal/features/auth"
 	"appointments/internal/features/customers"
 	"appointments/internal/features/onboarding"
 	"appointments/internal/features/resources"
 	"appointments/internal/features/scheduling"
 	"appointments/internal/features/services"
 	"appointments/internal/features/tenants"
+	"appointments/internal/features/users"
 	"appointments/internal/platform/database"
+	"appointments/internal/platform/mailer"
 	"appointments/internal/platform/whatsapp"
 	"appointments/internal/shared/middleware"
 )
@@ -33,12 +35,12 @@ func main() {
 		log.Fatal("ENCRYPTION_KEY must be exactly 32 bytes")
 	}
 
-	// ── Infra ───────────────────────────────────────────
+	// ── Infra ────────────────────────────────────────────
 	db := database.Connect(cfg.DatabaseURL)
 	wa := whatsapp.NewClient(cfg.WhatsappBaseURL, cfg.WhatsappAPIVersion)
 	resendMailer := mailer.NewResendMailer(cfg.ResendAPIKey, cfg.ResendFromEmail)
 
-	// ── Repos ──────────────────────────────────────────────
+	// ── Repos ────────────────────────────────────────────
 	tenantRepo := tenants.NewRepository(db, encKey)
 	serviceRepo := services.NewRepository(db)
 	resourceRepo := resources.NewRepository(db)
@@ -46,10 +48,12 @@ func main() {
 	sessionRepo := scheduling.NewSessionRepository(db)
 	appointmentRepo := scheduling.NewAppointmentRepository(db)
 	availabilityRepo := scheduling.NewAvailabilityRepository(db)
-	refreshTokenRepo := tenants.NewRefreshTokenRepository(db)
+	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
+	userRepo := users.NewRepository(db, encKey)
 	onboardingRepo := onboarding.NewRepository(db)
 
-	// ── Use Cases ─────────────────────────────────────────────────
+	// ── Use Cases ────────────────────────────────────────
+	userUseCases := users.NewUseCases(userRepo)
 	onboardingUC := onboarding.NewUseCases(
 		onboardingRepo,
 		tenantRepo,
@@ -58,7 +62,8 @@ func main() {
 		resendMailer,
 		cfg.AdminEmail,
 	)
-	tenantUC := tenants.NewUseCases(tenantRepo, refreshTokenRepo)
+	tenantUC := tenants.NewUseCases(tenantRepo)
+	authUC := auth.NewUseCases(tenantUC, userUseCases, refreshTokenRepo)
 	serviceUC := services.NewUseCases(serviceRepo)
 	resourceUC := resources.NewUseCases(resourceRepo)
 	customerUC := customers.NewUseCases(customerRepo)
@@ -73,10 +78,10 @@ func main() {
 		tenantRepo,
 	)
 
-	// ── State Machine ─────────────────────────────────────────────
+	// ── State Machine ────────────────────────────────────
 	machine := scheduling.NewStateMachine(sessionRepo, schedulingUC, wa, tenantRepo)
 
-	// ── Router ────────────────────────────────────────────────────
+	// ── Router ───────────────────────────────────────────
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
@@ -85,26 +90,30 @@ func main() {
 		AllowCredentials: false,
 	}))
 
-	// Webhook — firma verificada antes de llegar al handler
+	// Webhook (WhatsApp)
 	webhookHandler := scheduling.NewHandler(machine, tenantRepo, cfg.WebhookVerifyToken)
 	webhook := r.Group("/")
 	webhook.Use(middleware.WhatsAppSignature(cfg.WhatsappAppSecret))
 	webhookHandler.RegisterRoutes(webhook)
 
 	// REST API
+	authHandler := auth.NewHandler(authUC)
 	tenantHandler := tenants.NewHandler(tenantUC)
 	serviceHandler := services.NewHandler(serviceUC)
 	resourceHandler := resources.NewHandler(resourceUC)
 	customerHandler := customers.NewHandler(customerUC)
 	onboardingHandler := onboarding.NewHandler(onboardingUC)
+	userHandler := users.NewHandler(userUseCases)
 
+	authHandler.RegisterRoutes(r)
 	tenantHandler.RegisterRoutes(r)
 	serviceHandler.RegisterRoutes(r)
 	resourceHandler.RegisterRoutes(r)
 	customerHandler.RegisterRoutes(r)
 	onboardingHandler.RegisterRoutes(r)
+	userHandler.RegisterRoutes(r)
 
-	// ── Background Jobs ───────────────────────────────────────────
+	// ── Background Jobs ──────────────────────────────────
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Reminder job — run every minute
@@ -118,7 +127,7 @@ func main() {
 	)
 	go reminderJob.Run(ctx)
 
-	// Cleanup job — clean expired sessions every hour
+	// Cleanup job — delete expired sessions and refresh tokens every hour
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
@@ -127,34 +136,13 @@ func main() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				n, err := sessionRepo.DeleteExpired(context.Background())
-				if err != nil {
-					log.Printf("cleanup: error deleting expired sessions: %v", err)
-				} else if n > 0 {
-					log.Printf("cleanup: deleted %d expired sessions", n)
-				}
-			}
-		}
-	}()
-
-	// Cleanup job — clean expired refresh tokens every hour
-	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				n, err := sessionRepo.DeleteExpired(context.Background())
-				if err != nil {
+				if n, err := sessionRepo.DeleteExpired(context.Background()); err != nil {
 					log.Printf("cleanup sessions error: %v", err)
 				} else if n > 0 {
 					log.Printf("cleanup: deleted %d expired sessions", n)
 				}
 
-				n, err = refreshTokenRepo.DeleteExpired(context.Background())
-				if err != nil {
+				if n, err := refreshTokenRepo.DeleteExpired(context.Background()); err != nil {
 					log.Printf("cleanup refresh tokens error: %v", err)
 				} else if n > 0 {
 					log.Printf("cleanup: deleted %d expired refresh tokens", n)
@@ -163,7 +151,7 @@ func main() {
 		}
 	}()
 
-	// ── Server with graceful shutdown ────────────────────────────
+	// ── Server with graceful shutdown ────────────────────
 	srv := &http.Server{
 		Addr:         cfg.Port,
 		Handler:      r,
@@ -178,13 +166,12 @@ func main() {
 		}
 	}()
 
-	// Wait shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("shutting down...")
-	cancel() // Stop background jobs
+	cancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()

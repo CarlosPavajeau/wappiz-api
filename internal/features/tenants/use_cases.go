@@ -1,80 +1,32 @@
 package tenants
 
 import (
-	"appointments/internal/shared/jwt"
 	"context"
-	"errors"
-	"fmt"
-	"log"
-	"regexp"
-	"strings"
 	"time"
 
 	apperrors "appointments/internal/shared/errors"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UseCases struct {
-	repo             Repository
-	refreshTokenRepo RefreshTokenRepository
+	repo Repository
 }
 
-func NewUseCases(repo Repository, refreshTokenRepo RefreshTokenRepository) *UseCases {
-	return &UseCases{repo: repo, refreshTokenRepo: refreshTokenRepo}
+func NewUseCases(repo Repository) *UseCases {
+	return &UseCases{repo: repo}
 }
 
-type RegisterTenantInput struct {
-	Name     string
-	Timezone string
-	Email    string
-	Password string
+func (uc *UseCases) FindByID(ctx context.Context, id uuid.UUID) (*Tenant, error) {
+	return uc.repo.FindByID(ctx, id)
 }
 
-type RegisterTenantOutput struct {
-	Tenant *Tenant
-	User   *TenantUser
+func (uc *UseCases) FindBySlug(ctx context.Context, slug string) (*Tenant, error) {
+	return uc.repo.FindBySlug(ctx, slug)
 }
 
-func (uc *UseCases) RegisterTenant(ctx context.Context, input RegisterTenantInput) (*RegisterTenantOutput, error) {
-	slug := generateSlug(input.Name)
-
-	if _, err := uc.repo.FindBySlug(ctx, slug); err == nil {
-		slug = fmt.Sprintf("%s-%s", slug, uuid.New().String()[:4])
-	}
-
-	tenant := &Tenant{
-		ID:       uuid.New(),
-		Name:     input.Name,
-		Slug:     slug,
-		Timezone: input.Timezone,
-		Currency: "COP",
-		Plan:     PlanFree,
-	}
-
-	if err := uc.repo.Create(ctx, tenant); err != nil {
-		return nil, err
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-
-	user := &TenantUser{
-		ID:           uuid.New(),
-		TenantID:     tenant.ID,
-		Email:        input.Email,
-		PasswordHash: string(hash),
-		Role:         "admin",
-	}
-
-	if err := uc.repo.CreateUser(ctx, user); err != nil {
-		return nil, err
-	}
-
-	return &RegisterTenantOutput{Tenant: tenant, User: user}, nil
+func (uc *UseCases) Create(ctx context.Context, t *Tenant) error {
+	return uc.repo.Create(ctx, t)
 }
 
 type ConnectWhatsappInput struct {
@@ -114,131 +66,6 @@ func (uc *UseCases) VerifyWebhook(ctx context.Context, phoneNumberID string) err
 	return uc.repo.UpdateWhatsappConfig(ctx, cfg)
 }
 
-type LoginInput struct {
-	Email    string
-	Password string
-}
-
-type TokenPair struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    int
-}
-
-func (uc *UseCases) Login(ctx context.Context, input LoginInput) (*TokenPair, *Tenant, error) {
-	user, err := uc.repo.FindUserByEmail(ctx, input.Email)
-	if err != nil {
-		log.Printf("login: user not found email=%s", input.Email)
-		return nil, nil, ErrInvalidCredentials
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		log.Printf("login: wrong password user_id=%s email=%s", user.ID, input.Email)
-		return nil, nil, ErrInvalidCredentials
-	}
-
-	tenant, err := uc.repo.FindByID(ctx, user.TenantID)
-	if err != nil {
-		log.Printf("login: tenant not found user_id=%s tenant_id=%s err=%v", user.ID, user.TenantID, err)
-		return nil, nil, ErrInvalidCredentials
-	}
-
-	pair, err := uc.issueTokenPair(ctx, user, tenant, uuid.New())
-	if err != nil {
-		log.Printf("login: failed to issue tokens user_id=%s tenant_id=%s err=%v", user.ID, tenant.ID, err)
-		return nil, nil, err
-	}
-
-	log.Printf("login: success user_id=%s tenant_id=%s", user.ID, tenant.ID)
-	return pair, tenant, nil
-}
-
-func (uc *UseCases) RefreshTokens(ctx context.Context, plainToken string) (*TokenPair, *Tenant, error) {
-	hash := jwt.HashToken(plainToken)
-
-	rt, err := uc.refreshTokenRepo.FindByHash(ctx, hash)
-	if err != nil {
-		return nil, nil, apperrors.ErrNotFound
-	}
-
-	if rt.IsRevoked() {
-		uc.refreshTokenRepo.RevokeFamily(ctx, rt.FamilyID)
-		return nil, nil, ErrRefreshTokenReuse
-	}
-
-	if rt.IsExpired() {
-		uc.refreshTokenRepo.RevokeByID(ctx, rt.ID)
-		return nil, nil, ErrRefreshTokenExpired
-	}
-
-	if err := uc.refreshTokenRepo.RevokeByID(ctx, rt.ID); err != nil {
-		return nil, nil, err
-	}
-
-	user, err := uc.repo.FindUserByID(ctx, rt.UserID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	tenant, err := uc.repo.FindByID(ctx, rt.TenantID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	pair, err := uc.issueTokenPair(ctx, user, tenant, rt.FamilyID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return pair, tenant, nil
-}
-
-func (uc *UseCases) Logout(ctx context.Context, plainToken string) error {
-	hash := jwt.HashToken(plainToken)
-	rt, err := uc.refreshTokenRepo.FindByHash(ctx, hash)
-	if err != nil {
-		return nil
-	}
-	return uc.refreshTokenRepo.RevokeByID(ctx, rt.ID)
-}
-
-func (uc *UseCases) issueTokenPair(ctx context.Context, user *TenantUser, tenant *Tenant, familyID uuid.UUID) (*TokenPair, error) {
-	accessToken, err := jwt.GenerateAccessToken(user.ID, tenant.ID, user.Role)
-	if err != nil {
-		return nil, err
-	}
-
-	plain, hash, err := jwt.GenerateRefreshToken()
-	if err != nil {
-		return nil, err
-	}
-
-	rt := &RefreshToken{
-		ID:        uuid.New(),
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: hash,
-		FamilyID:  familyID,
-		ExpiresAt: time.Now().Add(jwt.RefreshTokenDuration),
-	}
-
-	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
-		return nil, err
-	}
-
-	return &TokenPair{
-		AccessToken:  accessToken,
-		RefreshToken: plain,
-		ExpiresIn:    int(jwt.AccessTokenDuration.Seconds()),
-	}, nil
-}
-
-var (
-	ErrInvalidCredentials  = errors.New("invalid credentials")
-	ErrRefreshTokenReuse   = errors.New("refresh token reuse detected")
-	ErrRefreshTokenExpired = errors.New("refresh token expired")
-)
-
 func (uc *UseCases) UpdateSettings(ctx context.Context, tenantID uuid.UUID, settings TenantSettings) error {
 	tenant, err := uc.repo.FindByID(ctx, tenantID)
 	if err != nil {
@@ -250,16 +77,4 @@ func (uc *UseCases) UpdateSettings(ctx context.Context, tenantID uuid.UUID, sett
 
 func (uc *UseCases) ResolveWebhook(ctx context.Context, phoneNumberID string) (*WhatsappConfig, *Tenant, error) {
 	return uc.repo.FindWhatsappConfigByPhoneNumberID(ctx, phoneNumberID)
-}
-
-var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
-
-func generateSlug(name string) string {
-	slug := strings.ToLower(name)
-	slug = strings.NewReplacer(
-		"á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u", "ñ", "n",
-	).Replace(slug)
-	slug = nonAlphanumeric.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-	return slug
 }

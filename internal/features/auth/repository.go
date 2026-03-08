@@ -1,35 +1,17 @@
-package tenants
+package auth
 
 import (
-	database "appointments/internal/platform/database"
 	"context"
 	"time"
 
+	"appointments/internal/platform/database"
 	apperrors "appointments/internal/shared/errors"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
-type RefreshToken struct {
-	ID        uuid.UUID
-	TenantID  uuid.UUID
-	UserID    uuid.UUID
-	TokenHash string
-	FamilyID  uuid.UUID
-	ExpiresAt time.Time
-	RevokedAt *time.Time
-	CreatedAt time.Time
-}
-
-func (rt *RefreshToken) IsExpired() bool {
-	return time.Now().After(rt.ExpiresAt)
-}
-
-func (rt *RefreshToken) IsRevoked() bool {
-	return rt.RevokedAt != nil
-}
-
+// RefreshTokenRepository manages persistence of refresh tokens.
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, rt *RefreshToken) error
 	FindByHash(ctx context.Context, hash string) (*RefreshToken, error)
@@ -38,7 +20,9 @@ type RefreshTokenRepository interface {
 	DeleteExpired(ctx context.Context) (int64, error)
 }
 
-type pgRefreshTokenRepository struct{ db *sqlx.DB }
+type pgRefreshTokenRepository struct {
+	db *sqlx.DB
+}
 
 func NewRefreshTokenRepository(db *sqlx.DB) RefreshTokenRepository {
 	return &pgRefreshTokenRepository{db: db}
