@@ -1,5 +1,3 @@
-// internal/features/onboarding/handler.go
-
 package onboarding
 
 import (
@@ -7,10 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-
 	"appointments/internal/shared/jwt"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -21,6 +18,14 @@ func NewHandler(uc *UseCases) *Handler {
 	return &Handler{useCases: uc}
 }
 
+// RegisterRoutes mounts all onboarding endpoints under /api/v1/onboarding.
+// All routes require a valid JWT.
+//
+//	GET  /api/v1/onboarding/progress — get current onboarding step
+//	GET  /api/v1/onboarding/templates — list service templates
+//	POST /api/v1/onboarding/step/2   — complete barber step
+//	POST /api/v1/onboarding/step/3   — complete services step
+//	POST /api/v1/onboarding/step/4   — complete WhatsApp step
 func (h *Handler) RegisterRoutes(r gin.IRouter) {
 	g := r.Group("/api/v1/onboarding")
 	g.Use(jwt.AuthMiddleware())
@@ -31,17 +36,7 @@ func (h *Handler) RegisterRoutes(r gin.IRouter) {
 		g.POST("/step/3", h.CompleteStepServices)
 		g.POST("/step/4", h.CompleteStepWhatsApp)
 	}
-
-	// Rutas de administración interna — solo superadmin
-	admin := r.Group("/api/v1/admin")
-	admin.Use(jwt.AuthMiddleware(), SuperAdminMiddleware())
-	{
-		admin.GET("/activations", h.ListActivations)
-		admin.POST("/activations/:id/activate", h.ActivateTenant)
-	}
 }
-
-// ── Request types ─────────────────────────────────────────────────
 
 type stepBarberRequest struct {
 	Name        string `json:"name"         binding:"required,min=2"`
@@ -66,15 +61,6 @@ type stepWhatsAppRequest struct {
 	Notes        string `json:"notes"`
 }
 
-type activateRequest struct {
-	PhoneNumberID      string `json:"phone_number_id"      binding:"required"`
-	DisplayPhoneNumber string `json:"display_phone_number" binding:"required"`
-	WABAID             string `json:"waba_id"              binding:"required"`
-	AccessToken        string `json:"access_token"         binding:"required"`
-}
-
-// ── Handlers ──────────────────────────────────────────────────────
-
 func (h *Handler) GetProgress(c *gin.Context) {
 	tenantID := jwt.TenantIDFromContext(c)
 
@@ -91,9 +77,7 @@ func (h *Handler) GetProgress(c *gin.Context) {
 }
 
 func (h *Handler) GetTemplates(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"templates": h.useCases.GetTemplates(),
-	})
+	c.JSON(http.StatusOK, gin.H{"templates": h.useCases.GetTemplates()})
 }
 
 func (h *Handler) CompleteStepBarber(c *gin.Context) {
@@ -175,60 +159,6 @@ func (h *Handler) CompleteStepWhatsApp(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"redirect": "/dashboard"})
 }
-
-// ── Admin handlers ────────────────────────────────────────────────
-
-func (h *Handler) ListActivations(c *gin.Context) {
-	activations, err := h.useCases.ListActivations(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch activations"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"activations": activations})
-}
-
-func (h *Handler) ActivateTenant(c *gin.Context) {
-	tenantID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant id"})
-		return
-	}
-
-	var req activateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.useCases.ActivateTenant(c.Request.Context(), ActivateTenantInput{
-		TenantID:           tenantID,
-		PhoneNumberID:      req.PhoneNumberID,
-		DisplayPhoneNumber: req.DisplayPhoneNumber,
-		WABAID:             req.WABAID,
-		AccessToken:        req.AccessToken,
-	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to activate tenant"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "tenant activated"})
-}
-
-// ── Middleware superadmin ─────────────────────────────────────────
-
-func SuperAdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		role := c.GetString("role")
-		if role != "superadmin" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-			return
-		}
-		c.Next()
-	}
-}
-
-// ── Error resolver ────────────────────────────────────────────────
 
 func resolveError(err error) (int, string) {
 	switch {

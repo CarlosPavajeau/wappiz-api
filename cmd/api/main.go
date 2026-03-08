@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"appointments/internal/config"
+	"appointments/internal/features/admin"
 	"appointments/internal/features/auth"
 	"appointments/internal/features/customers"
 	"appointments/internal/features/onboarding"
@@ -63,6 +64,7 @@ func main() {
 		resendMailer,
 		cfg.AdminEmail,
 	)
+	adminUC := admin.NewUseCases(tenantUC, resendMailer)
 	authUC := auth.NewUseCases(tenantUC, userUseCases, onboardingUC, refreshTokenRepo)
 	serviceUC := services.NewUseCases(serviceRepo)
 	resourceUC := resources.NewUseCases(resourceRepo)
@@ -97,6 +99,7 @@ func main() {
 	webhookHandler.RegisterRoutes(webhook)
 
 	// REST API
+	adminHandler := admin.NewHandler(adminUC)
 	authHandler := auth.NewHandler(authUC)
 	tenantHandler := tenants.NewHandler(tenantUC)
 	serviceHandler := services.NewHandler(serviceUC)
@@ -105,6 +108,7 @@ func main() {
 	onboardingHandler := onboarding.NewHandler(onboardingUC)
 	userHandler := users.NewHandler(userUseCases)
 
+	adminHandler.RegisterRoutes(r)
 	authHandler.RegisterRoutes(r)
 	tenantHandler.RegisterRoutes(r)
 	serviceHandler.RegisterRoutes(r)

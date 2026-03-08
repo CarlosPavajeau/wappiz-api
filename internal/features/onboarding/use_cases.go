@@ -13,12 +13,9 @@ import (
 )
 
 // TenantService defines the tenant operations needed by onboarding.
-// Using a narrow interface keeps onboarding decoupled from the full tenants.Repository.
 type TenantService interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*tenants.Tenant, error)
 	CreateWhatsappConfigPending(ctx context.Context, input tenants.CreateWhatsappConfigPendingInput) error
-	ActivateWhatsappConfig(ctx context.Context, input tenants.ActivateWhatsappConfigInput) error
-	FindPendingActivations(ctx context.Context) ([]tenants.WhatsappConfig, error)
 }
 
 type UseCases struct {
@@ -58,7 +55,7 @@ func (uc *UseCases) GetProgress(ctx context.Context, tenantID uuid.UUID) (*Progr
 func (uc *UseCases) InitProgress(ctx context.Context, tenantID uuid.UUID) error {
 	_, err := uc.repo.FindByTenant(ctx, tenantID)
 	if err == nil {
-		return nil // already initialised
+		return nil
 	}
 	_, err = uc.repo.Create(ctx, tenantID)
 	return err
@@ -231,45 +228,6 @@ func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsApp
 	return nil
 }
 
-type ActivateTenantInput struct {
-	TenantID           uuid.UUID
-	PhoneNumberID      string
-	DisplayPhoneNumber string
-	WABAID             string
-	AccessToken        string
-}
-
-// ActivateTenant activates the WhatsApp config for a tenant and notifies the owner.
-func (uc *UseCases) ActivateTenant(ctx context.Context, input ActivateTenantInput) error {
-	tenant, err := uc.tenantService.FindByID(ctx, input.TenantID)
-	if err != nil {
-		return fmt.Errorf("find tenant: %w", err)
-	}
-
-	if err := uc.tenantService.ActivateWhatsappConfig(ctx, tenants.ActivateWhatsappConfigInput{
-		TenantID:           input.TenantID,
-		PhoneNumberID:      input.PhoneNumberID,
-		DisplayPhoneNumber: input.DisplayPhoneNumber,
-		WABAID:             input.WABAID,
-		AccessToken:        input.AccessToken,
-	}); err != nil {
-		return fmt.Errorf("activate whatsapp config: %w", err)
-	}
-
-	go uc.mailer.Send(ctx, mailer.Email{
-		To:      tenant.Settings.ContactEmail,
-		Subject: "🎉 Tu WhatsApp ya está activo — Turnio",
-		Body:    buildActivationEmail(tenant.Name, input.DisplayPhoneNumber),
-	})
-
-	return nil
-}
-
-// ListActivations returns all tenants pending WhatsApp activation.
-func (uc *UseCases) ListActivations(ctx context.Context) ([]tenants.WhatsappConfig, error) {
-	return uc.tenantService.FindPendingActivations(ctx)
-}
-
 // GetTemplates returns the available service templates for onboarding.
 func (uc *UseCases) GetTemplates() map[string][]ServiceTemplate {
 	return Templates
@@ -284,28 +242,6 @@ var (
 type onboardingError string
 
 func (e onboardingError) Error() string { return string(e) }
-
-func buildActivationEmail(tenantName, phoneNumber string) string {
-	waLink := "https://wa.me/" + sanitizePhone(phoneNumber)
-	return fmt.Sprintf(`
-		<h2>🎉 ¡Tu barbería ya puede recibir citas!</h2>
-		<p>Hola <strong>%s</strong>,</p>
-		<p>Tu número de WhatsApp ya está listo.</p>
-		<h3>📱 Número de tu barbería:<br>%s</h3>
-		<p>Dale este número a tus clientes o comparte el enlace directo:</p>
-		<p><a href="%s">%s</a></p>
-	`, tenantName, phoneNumber, waLink, waLink)
-}
-
-func sanitizePhone(phone string) string {
-	result := ""
-	for _, ch := range phone {
-		if ch >= '0' && ch <= '9' {
-			result += string(ch)
-		}
-	}
-	return result
-}
 
 func buildOwnerRequestEmail(tenantName string) string {
 	return fmt.Sprintf(`

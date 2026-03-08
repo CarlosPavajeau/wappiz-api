@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+
 type Step int
 
 const (
@@ -36,24 +37,6 @@ func (p *Progress) Advance() {
 	if p.CurrentStep < StepWhatsApp {
 		p.CurrentStep++
 	}
-}
-
-type ActivationStatus string
-
-const (
-	ActivationPending    ActivationStatus = "pending"
-	ActivationInProgress ActivationStatus = "in_progress"
-	ActivationActive     ActivationStatus = "active"
-	ActivationFailed     ActivationStatus = "failed"
-)
-
-type Activation struct {
-	TenantID     uuid.UUID
-	TenantName   string
-	ContactEmail string
-	Notes        string
-	Status       ActivationStatus
-	RequestedAt  time.Time
 }
 
 type ServiceTemplate struct {
