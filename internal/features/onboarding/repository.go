@@ -59,8 +59,7 @@ func (r *pgRepository) FindByTenant(ctx context.Context, tenantID uuid.UUID) (*P
 		return nil, err
 	}
 
-	p := row.toDomain()
-	return &p, nil
+	return new(row.toDomain()), nil
 }
 
 func (r *pgRepository) Create(ctx context.Context, tenantID uuid.UUID) (*Progress, error) {
@@ -75,8 +74,7 @@ func (r *pgRepository) Create(ctx context.Context, tenantID uuid.UUID) (*Progres
 		return nil, err
 	}
 
-	p := row.toDomain()
-	return &p, nil
+	return new(row.toDomain()), nil
 }
 
 func (r *pgRepository) AdvanceStep(ctx context.Context, tenantID uuid.UUID) error {
