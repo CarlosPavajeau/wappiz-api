@@ -24,9 +24,6 @@ type Repository interface {
 	FindWhatsappConfigByPhoneNumberID(ctx context.Context, phoneNumberID string) (*WhatsappConfig, *Tenant, error)
 	CreateWhatsappConfig(ctx context.Context, cfg *WhatsappConfig) error
 	UpdateWhatsappConfig(ctx context.Context, cfg *WhatsappConfig) error
-	CreateUser(ctx context.Context, u *TenantUser) error
-	FindUserByEmail(ctx context.Context, email string) (*TenantUser, error)
-	FindUserByID(ctx context.Context, id uuid.UUID) (*TenantUser, error)
 	CreateWhatsappConfigPending(ctx context.Context, input CreateWhatsappConfigPendingInput) error
 	FindPendingActivations(ctx context.Context) ([]WhatsappConfig, error)
 	ActivateWhatsappConfig(ctx context.Context, input ActivateWhatsappConfigInput) error
@@ -320,38 +317,6 @@ func (r *pgRepository) FindUserByEmail(ctx context.Context, email string) (*Tena
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
-		return nil, err
-	}
-
-	return &TenantUser{
-		ID:           row.ID,
-		TenantID:     row.TenantID,
-		Email:        row.Email,
-		PasswordHash: row.PasswordHash,
-		Role:         row.Role,
-		CreatedAt:    row.CreatedAt,
-	}, nil
-}
-
-func (r *pgRepository) FindUserByID(ctx context.Context, id uuid.UUID) (*TenantUser, error) {
-	var row struct {
-		ID           uuid.UUID `db:"id"`
-		TenantID     uuid.UUID `db:"tenant_id"`
-		Email        string    `db:"email"`
-		PasswordHash string    `db:"password_hash"`
-		Role         string    `db:"role"`
-		CreatedAt    time.Time `db:"created_at"`
-	}
-
-	err := r.db.GetContext(ctx, &row, `
-		SELECT id, tenant_id, email, password_hash, role, created_at
-		FROM tenant_users WHERE id = $1
-	`, id)
-
-	if err != nil {
-		if database.IsNotFound(err) {
-			return nil, apperrors.ErrNotFound
-		}
 		return nil, err
 	}
 
