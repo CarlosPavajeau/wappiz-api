@@ -3,6 +3,7 @@ package onboarding
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"appointments/internal/features/resources"
 	"appointments/internal/features/services"
@@ -213,17 +214,27 @@ func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsApp
 		return fmt.Errorf("complete onboarding: %w", err)
 	}
 
-	go uc.mailer.Send(ctx, mailer.Email{
-		To:      input.ContactEmail,
-		Subject: "✂️ Estamos configurando tu WhatsApp",
-		Body:    buildOwnerRequestEmail(tenant.Name),
-	})
+	go func() {
+		err := uc.mailer.Send(ctx, mailer.Email{
+			To:      input.ContactEmail,
+			Subject: "✂️ Estamos configurando tu WhatsApp",
+			Body:    buildOwnerRequestEmail(tenant.Name),
+		})
+		if err != nil {
+			log.Fatalf("onboarding: send owner email tenant_id=%s email=%s err=%v", input.TenantID, input.ContactEmail, err)
+		}
+	}()
 
-	go uc.mailer.Send(ctx, mailer.Email{
-		To:      uc.adminEmail,
-		Subject: fmt.Sprintf("🔔 Nueva activación pendiente: %s", tenant.Name),
-		Body:    buildAdminNotificationEmail(tenant.Name, input.ContactEmail, input.Notes),
-	})
+	go func() {
+		err := uc.mailer.Send(ctx, mailer.Email{
+			To:      uc.adminEmail,
+			Subject: fmt.Sprintf("🔔 Nueva activación pendiente: %s", tenant.Name),
+			Body:    buildAdminNotificationEmail(tenant.Name, input.ContactEmail, input.Notes),
+		})
+		if err != nil {
+			log.Fatalf("onboarding: send admin email tenant_id=%s email=%s err=%v", input.TenantID, input.ContactEmail, err)
+		}
+	}()
 
 	return nil
 }
