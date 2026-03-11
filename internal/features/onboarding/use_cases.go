@@ -221,7 +221,7 @@ func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsApp
 			Body:    buildOwnerRequestEmail(tenant.Name),
 		})
 		if err != nil {
-			log.Fatalf("onboarding: send owner email tenant_id=%s email=%s err=%v", input.TenantID, input.ContactEmail, err)
+			log.Printf("onboarding: send owner email tenant_id=%s email=%s err=%v", input.TenantID, input.ContactEmail, err)
 		}
 	}()
 
@@ -232,7 +232,7 @@ func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsApp
 			Body:    buildAdminNotificationEmail(tenant.Name, input.ContactEmail, input.Notes),
 		})
 		if err != nil {
-			log.Fatalf("onboarding: send admin email tenant_id=%s email=%s err=%v", input.TenantID, input.ContactEmail, err)
+			log.Printf("onboarding: send admin email tenant_id=%s email=%s err=%v", input.TenantID, input.ContactEmail, err)
 		}
 	}()
 
