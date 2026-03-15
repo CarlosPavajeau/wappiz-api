@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"appointments/internal/features/tenants"
 	"appointments/internal/platform/mailer"
@@ -75,11 +76,18 @@ func (uc *UseCases) ActivateTenant(ctx context.Context, input ActivateTenantInpu
 		return fmt.Errorf("activate whatsapp config: %w", err)
 	}
 
-	go uc.mailer.Send(ctx, mailer.Email{
-		To:      tenant.Settings.ContactEmail,
-		Subject: "🎉 Tu WhatsApp ya está activo — Turnio",
-		Body:    buildActivationEmail(tenant.Name, input.DisplayPhoneNumber),
-	})
+	bgContext := context.WithoutCancel(ctx)
+
+	go func() {
+		err := uc.mailer.Send(bgContext, mailer.Email{
+			To:      tenant.Settings.ContactEmail,
+			Subject: "🎉 Tu WhatsApp ya está activo — Turnio",
+			Body:    buildActivationEmail(tenant.Name, input.DisplayPhoneNumber),
+		})
+		if err != nil {
+			log.Printf("[admin] failed to send email: %v", err)
+		}
+	}()
 
 	return nil
 }
