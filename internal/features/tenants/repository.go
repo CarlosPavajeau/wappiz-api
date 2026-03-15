@@ -276,14 +276,15 @@ func (r *pgRepository) UpdateWhatsappConfig(ctx context.Context, cfg *WhatsappCo
 func (r *pgRepository) CreateWhatsappConfigPending(ctx context.Context, input CreateWhatsappConfigPendingInput) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO tenant_whatsapp_configs
-			(id, tenant_id, activation_status, activation_requested_at, activation_notes)
-		VALUES ($1, $2, 'pending', NOW(), $3)
+			(id, tenant_id, activation_status, activation_requested_at, activation_contact_email, activation_notes)
+		VALUES ($1, $2, 'pending', NOW(), $3, $4)
 		ON CONFLICT (tenant_id) DO UPDATE
 		SET
-			activation_status       = 'pending',
-			activation_requested_at = NOW(),
-			activation_notes        = EXCLUDED.activation_notes
-	`, uuid.New(), input.TenantID, input.Notes)
+			activation_status        = 'pending',
+			activation_requested_at  = NOW(),
+			activation_contact_email = EXCLUDED.activation_contact_email,
+			activation_notes         = EXCLUDED.activation_notes
+	`, uuid.New(), input.TenantID, input.ContactEmail, input.Notes)
 	return err
 }
 
@@ -300,11 +301,11 @@ func (r *pgRepository) FindPendingActivations(ctx context.Context) ([]PendingAct
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT
 			wc.tenant_id,
-			t.name                                   AS tenant_name,
-			COALESCE(t.settings->>'contact_email', '') AS contact_email,
+			t.name                                          AS tenant_name,
+			COALESCE(wc.activation_contact_email, '')       AS contact_email,
 			wc.activation_status,
 			wc.activation_requested_at,
-			COALESCE(wc.activation_notes, '')        AS activation_notes
+			COALESCE(wc.activation_notes, '')               AS activation_notes
 		FROM tenant_whatsapp_configs wc
 		JOIN tenants t ON t.id = wc.tenant_id
 		WHERE wc.activation_status = 'pending'
