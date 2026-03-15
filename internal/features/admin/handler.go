@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"appointments/internal/shared/jwt"
+	"wappiz/internal/shared/jwt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

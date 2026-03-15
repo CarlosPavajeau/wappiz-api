@@ -1,10 +1,10 @@
 package scheduling
 
 import (
-	appointmentspkg "appointments/internal/features/appointments"
-	"appointments/internal/features/customers"
-	"appointments/internal/features/resources"
-	"appointments/internal/features/tenants"
+	appointmentspkg "wappiz/internal/features/appointments"
+	"wappiz/internal/features/customers"
+	"wappiz/internal/features/resources"
+	"wappiz/internal/features/tenants"
 	"context"
 	"errors"
 	"fmt"
@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"appointments/internal/platform/whatsapp"
-	apperrors "appointments/internal/shared/errors"
+	"wappiz/internal/platform/whatsapp"
+	apperrors "wappiz/internal/shared/errors"
 
 	"github.com/google/uuid"
 )

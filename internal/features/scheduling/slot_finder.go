@@ -1,7 +1,7 @@
 package scheduling
 
 import (
-	"appointments/internal/features/services"
+	"wappiz/internal/features/services"
 	"context"
 	"time"
 

@@ -1,7 +1,7 @@
 package resources
 
 import (
-	"appointments/internal/shared/jwt"
+	"wappiz/internal/shared/jwt"
 	"net/http"
 	"time"
 

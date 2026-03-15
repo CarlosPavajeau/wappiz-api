@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"appointments/internal/features/tenants"
-	"appointments/internal/platform/whatsapp"
+	"wappiz/internal/features/tenants"
+	"wappiz/internal/platform/whatsapp"
 
 	"github.com/gin-gonic/gin"
 )

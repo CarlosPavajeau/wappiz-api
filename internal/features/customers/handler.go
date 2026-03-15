@@ -1,7 +1,7 @@
 package customers
 
 import (
-	"appointments/internal/shared/jwt"
+	"wappiz/internal/shared/jwt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"appointments/internal/platform/database"
-	apperrors "appointments/internal/shared/errors"
+	"wappiz/internal/platform/database"
+	apperrors "wappiz/internal/shared/errors"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"

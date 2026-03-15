@@ -1,17 +1,17 @@
 package scheduling
 
 import (
-	appointmentspkg "appointments/internal/features/appointments"
-	"appointments/internal/features/customers"
-	"appointments/internal/features/resources"
-	"appointments/internal/features/services"
-	"appointments/internal/features/tenants"
+	appointmentspkg "wappiz/internal/features/appointments"
+	"wappiz/internal/features/customers"
+	"wappiz/internal/features/resources"
+	"wappiz/internal/features/services"
+	"wappiz/internal/features/tenants"
 	"context"
 	"fmt"
 	"log"
 	"time"
 
-	"appointments/internal/platform/whatsapp"
+	"wappiz/internal/platform/whatsapp"
 )
 
 type ReminderJob struct {

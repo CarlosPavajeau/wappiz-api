@@ -1,4 +1,4 @@
-module appointments
+module wappiz
 
 go 1.26
 

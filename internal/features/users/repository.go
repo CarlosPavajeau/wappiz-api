@@ -1,8 +1,8 @@
 package users
 
 import (
-	"appointments/internal/platform/database"
-	apperrors "appointments/internal/shared/errors"
+	"wappiz/internal/platform/database"
+	apperrors "wappiz/internal/shared/errors"
 	"context"
 	"time"
 

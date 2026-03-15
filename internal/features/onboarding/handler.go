@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"appointments/internal/shared/jwt"
+	"wappiz/internal/shared/jwt"
 
 	"github.com/gin-gonic/gin"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"appointments/internal/features/services"
-	apperrors "appointments/internal/shared/errors"
+	"wappiz/internal/features/services"
+	apperrors "wappiz/internal/shared/errors"
 
 	"github.com/google/uuid"
 )

@@ -1,11 +1,11 @@
 package services
 
 import (
-	"appointments/internal/platform/database"
+	"wappiz/internal/platform/database"
 	"context"
 	"time"
 
-	apperrors "appointments/internal/shared/errors"
+	apperrors "wappiz/internal/shared/errors"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"

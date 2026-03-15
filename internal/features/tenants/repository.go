@@ -1,9 +1,9 @@
 package tenants
 
 import (
-	"appointments/internal/platform/database"
-	"appointments/internal/shared/crypto"
-	apperrors "appointments/internal/shared/errors"
+	"wappiz/internal/platform/database"
+	"wappiz/internal/shared/crypto"
+	apperrors "wappiz/internal/shared/errors"
 	"context"
 	"encoding/json"
 	"fmt"

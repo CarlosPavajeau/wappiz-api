@@ -1,7 +1,7 @@
 package services
 
 import (
-	"appointments/internal/shared/jwt"
+	"wappiz/internal/shared/jwt"
 	"errors"
 	"net/http"
 

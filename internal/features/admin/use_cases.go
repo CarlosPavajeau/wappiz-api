@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"appointments/internal/features/tenants"
-	"appointments/internal/platform/mailer"
+	"wappiz/internal/features/tenants"
+	"wappiz/internal/platform/mailer"
 
 	"github.com/google/uuid"
 )

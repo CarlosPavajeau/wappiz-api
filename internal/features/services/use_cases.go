@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	apperrors "appointments/internal/shared/errors"
+	apperrors "wappiz/internal/shared/errors"
 
 	"github.com/google/uuid"
 )

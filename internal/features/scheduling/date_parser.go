@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	apperrors "appointments/internal/shared/errors"
+	apperrors "wappiz/internal/shared/errors"
 )
 
 var formats = []string{

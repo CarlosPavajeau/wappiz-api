@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"appointments/internal/features/tenants"
-	"appointments/internal/features/users"
-	apperrors "appointments/internal/shared/errors"
-	"appointments/internal/shared/jwt"
+	"wappiz/internal/features/tenants"
+	"wappiz/internal/features/users"
+	apperrors "wappiz/internal/shared/errors"
+	"wappiz/internal/shared/jwt"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
