@@ -23,6 +23,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		g.GET("", h.List)
 		g.POST("", h.Create)
+		g.GET("/:id", h.Get)
 		g.PUT("/:id", h.Update)
 		g.DELETE("/:id", h.Delete)
 		g.PUT("/sort-order", h.UpdateSortOrder)
@@ -169,6 +170,24 @@ func (h *Handler) List(c *gin.Context) {
 		result[i] = toResourceResponse(r)
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) Get(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid resource id"})
+		return
+	}
+
+	tenantID := jwt.TenantIDFromContext(c)
+
+	res, err := h.useCases.GetByID(c.Request.Context(), id, tenantID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, toResourceResponse(*res))
 }
 
 func (h *Handler) Create(c *gin.Context) {
