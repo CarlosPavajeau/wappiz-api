@@ -214,8 +214,10 @@ func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsApp
 		return fmt.Errorf("complete onboarding: %w", err)
 	}
 
+	bgCtx := context.WithoutCancel(ctx)
+
 	go func() {
-		err := uc.mailer.Send(ctx, mailer.Email{
+		err := uc.mailer.Send(bgCtx, mailer.Email{
 			To:      input.ContactEmail,
 			Subject: "✂️ Estamos configurando tu WhatsApp",
 			Body:    buildOwnerRequestEmail(tenant.Name),
@@ -226,7 +228,7 @@ func (uc *UseCases) CompleteStepWhatsApp(ctx context.Context, input StepWhatsApp
 	}()
 
 	go func() {
-		err := uc.mailer.Send(ctx, mailer.Email{
+		err := uc.mailer.Send(bgCtx, mailer.Email{
 			To:      uc.adminEmail,
 			Subject: fmt.Sprintf("🔔 Nueva activación pendiente: %s", tenant.Name),
 			Body:    buildAdminNotificationEmail(tenant.Name, input.ContactEmail, input.Notes),
