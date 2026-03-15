@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	appointmentspkg "appointments/internal/features/appointments"
 	"appointments/internal/features/customers"
 	"appointments/internal/features/resources"
 	"appointments/internal/features/services"
@@ -15,6 +16,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// AppointmentService defines the appointment operations needed by scheduling.
+type AppointmentService interface {
+	Create(ctx context.Context, input *appointmentspkg.CreateAppointmentInput) (*appointmentspkg.Appointment, error)
+	GetByCustomer(ctx context.Context, tenantID, customerID uuid.UUID) ([]appointmentspkg.Appointment, error)
+	GetByID(ctx context.Context, id, tenantID uuid.UUID) (*appointmentspkg.Appointment, error)
+	Cancel(ctx context.Context, id uuid.UUID, cancelledBy, reason string) error
+	GetUpcomingForReminders(ctx context.Context) ([]appointmentspkg.Appointment, error)
+	MarkReminderSent(ctx context.Context, id uuid.UUID, reminderType string) error
+}
+
 const (
 	maxDateAttempts = 3
 	sessionTTL      = 30 * time.Minute
@@ -22,18 +33,18 @@ const (
 )
 
 type UseCases struct {
-	sessions     SessionRepository
-	appointments AppointmentRepository
-	services     services.Repository
-	resources    resources.Repository
-	customers    customers.Repository
-	slotFinder   *SlotFinder
-	tenantRepo   tenants.Repository
+	sessions        SessionRepository
+	appointmentSvc  AppointmentService
+	services        services.Repository
+	resources       resources.Repository
+	customers       customers.Repository
+	slotFinder      *SlotFinder
+	tenantRepo      tenants.Repository
 }
 
 func NewUseCases(
 	sessions SessionRepository,
-	appointments AppointmentRepository,
+	appointmentSvc AppointmentService,
 	services services.Repository,
 	resources resources.Repository,
 	customers customers.Repository,
@@ -41,13 +52,13 @@ func NewUseCases(
 	tenantRepo tenants.Repository,
 ) *UseCases {
 	return &UseCases{
-		sessions:     sessions,
-		appointments: appointments,
-		services:     services,
-		resources:    resources,
-		customers:    customers,
-		slotFinder:   NewSlotFinder(availability),
-		tenantRepo:   tenantRepo,
+		sessions:       sessions,
+		appointmentSvc: appointmentSvc,
+		services:       services,
+		resources:      resources,
+		customers:      customers,
+		slotFinder:     NewSlotFinder(availability),
+		tenantRepo:     tenantRepo,
 	}
 }
 
@@ -192,7 +203,7 @@ func (uc *UseCases) validateForAnyResource(ctx context.Context, t time.Time, ten
 	return &DateValidationResult{StartsAt: t, SlotTaken: true, Slots: allSuggestions}, nil
 }
 
-func (uc *UseCases) CreateAppointment(ctx context.Context, session *Session, tenantTZ string) (*Appointment, error) {
+func (uc *UseCases) CreateAppointment(ctx context.Context, session *Session, tenantTZ string) (*appointmentspkg.Appointment, error) {
 	tenant, err := uc.tenantRepo.FindByID(ctx, session.TenantID)
 	if err != nil {
 		return nil, err
@@ -210,8 +221,7 @@ func (uc *UseCases) CreateAppointment(ctx context.Context, session *Session, ten
 	startsAt := *session.Data.StartsAt
 	endsAt := startsAt.Add(time.Duration(service.DurationMinutes) * time.Minute)
 
-	a := &Appointment{
-		ID:             uuid.New(),
+	a, err := uc.appointmentSvc.Create(ctx, &appointmentspkg.CreateAppointmentInput{
 		TenantID:       session.TenantID,
 		ResourceID:     *session.Data.ResourceID,
 		ServiceID:      *session.Data.ServiceID,
@@ -220,9 +230,8 @@ func (uc *UseCases) CreateAppointment(ctx context.Context, session *Session, ten
 		EndsAt:         endsAt,
 		Status:         "confirmed",
 		PriceAtBooking: service.Price,
-	}
-
-	if err := uc.appointments.Create(ctx, a); err != nil {
+	})
+	if err != nil {
 		if isOverlapError(err) {
 			return nil, apperrors.ErrOverlap
 		}

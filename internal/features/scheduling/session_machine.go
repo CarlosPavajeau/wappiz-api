@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	appointmentspkg "appointments/internal/features/appointments"
 	"appointments/internal/features/customers"
 	"appointments/internal/features/resources"
 	"appointments/internal/features/tenants"
@@ -401,7 +402,7 @@ func (sm *StateMachine) handleConfirm(ctx context.Context, msg IncomingMessage, 
 }
 
 func (sm *StateMachine) handleMyAppointments(ctx context.Context, msg IncomingMessage, customer *customers.Customer) error {
-	appointments, err := sm.useCases.appointments.FindByCustomer(ctx, msg.TenantID, customer.ID)
+	appointments, err := sm.useCases.appointmentSvc.GetByCustomer(ctx, msg.TenantID, customer.ID)
 	if err != nil {
 		return err
 	}
@@ -425,7 +426,7 @@ func (sm *StateMachine) handleMyAppointments(ctx context.Context, msg IncomingMe
 }
 
 func (sm *StateMachine) handleCancelFlow(ctx context.Context, msg IncomingMessage, customer *customers.Customer) error {
-	appointments, err := sm.useCases.appointments.FindByCustomer(ctx, msg.TenantID, customer.ID)
+	appointments, err := sm.useCases.appointmentSvc.GetByCustomer(ctx, msg.TenantID, customer.ID)
 	if err != nil {
 		return err
 	}
@@ -467,7 +468,7 @@ func (sm *StateMachine) handleCancelConfirm(ctx context.Context, msg IncomingMes
 
 	log.Printf("[scheduling] parsed appointmentID | id=%s", appointmentID)
 
-	appointment, err := sm.useCases.appointments.FindByID(ctx, appointmentID, msg.TenantID)
+	appointment, err := sm.useCases.appointmentSvc.GetByID(ctx, appointmentID, msg.TenantID)
 	if err != nil {
 		log.Printf("[scheduling] ERROR finding appointment | id=%s err=%v", appointmentID, err)
 		return sm.wa.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
@@ -527,7 +528,7 @@ func (sm *StateMachine) handleCancelExecute(ctx context.Context, msg IncomingMes
 			"Ocurrió un error. Por favor intenta de nuevo.")
 	}
 
-	appointment, err := sm.useCases.appointments.FindByID(ctx, appointmentID, msg.TenantID)
+	appointment, err := sm.useCases.appointmentSvc.GetByID(ctx, appointmentID, msg.TenantID)
 	if err != nil {
 		log.Printf("[scheduling] ERROR finding appointment to cancel | id=%s err=%v", appointmentID, err)
 		return sm.wa.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
@@ -541,8 +542,8 @@ func (sm *StateMachine) handleCancelExecute(ctx context.Context, msg IncomingMes
 			"No encontramos esa cita. Por favor intenta de nuevo.")
 	}
 
-	if err := sm.useCases.appointments.UpdateStatus(
-		ctx, appointmentID, "cancelled", "customer", "Cancelado por el cliente",
+	if err := sm.useCases.appointmentSvc.Cancel(
+		ctx, appointmentID, "customer", "Cancelado por el cliente",
 	); err != nil {
 		log.Printf("[scheduling] ERROR cancelling appointment | id=%s err=%v", appointmentID, err)
 		return sm.wa.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
@@ -675,7 +676,7 @@ func (sm *StateMachine) sendConfirmation(ctx context.Context, msg IncomingMessag
 	return sm.wa.SendButtons(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body, buttons)
 }
 
-func (sm *StateMachine) sendAppointmentConfirmed(ctx context.Context, msg IncomingMessage, a *Appointment, customer *customers.Customer, session *Session) error {
+func (sm *StateMachine) sendAppointmentConfirmed(ctx context.Context, msg IncomingMessage, a *appointmentspkg.Appointment, customer *customers.Customer, session *Session) error {
 	svc, _ := sm.useCases.services.FindByID(ctx, a.ServiceID)
 	res, _ := sm.useCases.resources.FindByID(ctx, a.ResourceID)
 	tenant, _ := sm.tenantRepo.FindByID(ctx, session.TenantID)

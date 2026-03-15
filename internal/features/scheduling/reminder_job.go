@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	appointmentspkg "appointments/internal/features/appointments"
 	"appointments/internal/features/customers"
 	"appointments/internal/features/resources"
 	"appointments/internal/features/services"
@@ -14,16 +15,16 @@ import (
 )
 
 type ReminderJob struct {
-	appointments AppointmentRepository
-	services     services.Repository
-	resources    resources.Repository
-	customers    customers.Repository
-	tenantRepo   tenants.Repository
-	wa           whatsapp.Client
+	appointmentSvc AppointmentService
+	services       services.Repository
+	resources      resources.Repository
+	customers      customers.Repository
+	tenantRepo     tenants.Repository
+	wa             whatsapp.Client
 }
 
 func NewReminderJob(
-	appointments AppointmentRepository,
+	appointmentSvc AppointmentService,
 	services services.Repository,
 	resources resources.Repository,
 	clients customers.Repository,
@@ -31,12 +32,12 @@ func NewReminderJob(
 	wa whatsapp.Client,
 ) *ReminderJob {
 	return &ReminderJob{
-		appointments: appointments,
-		services:     services,
-		resources:    resources,
-		customers:    clients,
-		tenantRepo:   tenantRepo,
-		wa:           wa,
+		appointmentSvc: appointmentSvc,
+		services:       services,
+		resources:      resources,
+		customers:      clients,
+		tenantRepo:     tenantRepo,
+		wa:             wa,
 	}
 }
 
@@ -62,7 +63,7 @@ func (j *ReminderJob) Run(ctx context.Context) {
 func (j *ReminderJob) process(ctx context.Context) error {
 	log.Printf("checking for upcoming appointments at %s", time.Now().Format(time.RFC3339))
 
-	upcoming, err := j.appointments.FindUpcomingForReminders(ctx)
+	upcoming, err := j.appointmentSvc.GetUpcomingForReminders(ctx)
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (j *ReminderJob) process(ctx context.Context) error {
 	return nil
 }
 
-func (j *ReminderJob) sendReminder(ctx context.Context, a Appointment) error {
+func (j *ReminderJob) sendReminder(ctx context.Context, a appointmentspkg.Appointment) error {
 	client, err := j.customers.FindByID(ctx, a.CustomerID)
 	if err != nil {
 		return err
@@ -132,5 +133,5 @@ func (j *ReminderJob) sendReminder(ctx context.Context, a Appointment) error {
 		return err
 	}
 
-	return j.appointments.MarkReminderSent(ctx, a.ID, reminderType)
+	return j.appointmentSvc.MarkReminderSent(ctx, a.ID, reminderType)
 }

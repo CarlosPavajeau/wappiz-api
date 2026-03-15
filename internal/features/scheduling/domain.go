@@ -74,18 +74,6 @@ type TimeSlot struct {
 	ResourceName string
 }
 
-type Appointment struct {
-	ID             uuid.UUID
-	TenantID       uuid.UUID
-	ResourceID     uuid.UUID
-	ServiceID      uuid.UUID
-	CustomerID     uuid.UUID
-	StartsAt       time.Time
-	EndsAt         time.Time
-	Status         string
-	PriceAtBooking float64
-}
-
 type WorkingHours struct {
 	DayOfWeek int
 	StartTime string // "09:00"

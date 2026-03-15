@@ -15,6 +15,7 @@ import (
 
 	"appointments/internal/config"
 	"appointments/internal/features/admin"
+	"appointments/internal/features/appointments"
 	"appointments/internal/features/auth"
 	"appointments/internal/features/customers"
 	"appointments/internal/features/onboarding"
@@ -48,7 +49,7 @@ func main() {
 	resourceRepo := resources.NewRepository(db)
 	customerRepo := customers.NewRepository(db)
 	sessionRepo := scheduling.NewSessionRepository(db)
-	appointmentRepo := scheduling.NewAppointmentRepository(db)
+	appointmentRepo := appointments.NewRepository(db)
 	availabilityRepo := scheduling.NewAvailabilityRepository(db)
 	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
 	userRepo := users.NewRepository(db)
@@ -70,10 +71,11 @@ func main() {
 	serviceUC := services.NewUseCases(serviceRepo)
 	resourceUC := resources.NewUseCases(resourceRepo, serviceRepo)
 	customerUC := customers.NewUseCases(customerRepo)
+	appointmentUC := appointments.NewUseCases(appointmentRepo)
 
 	schedulingUC := scheduling.NewUseCases(
 		sessionRepo,
-		appointmentRepo,
+		appointmentUC,
 		serviceRepo,
 		resourceRepo,
 		customerRepo,
@@ -108,6 +110,7 @@ func main() {
 	customerHandler := customers.NewHandler(customerUC)
 	onboardingHandler := onboarding.NewHandler(onboardingUC)
 	userHandler := users.NewHandler(userUseCases)
+	appointmentHandler := appointments.NewHandler(appointmentUC)
 
 	adminHandler.RegisterRoutes(r)
 	authHandler.RegisterRoutes(r)
@@ -117,13 +120,14 @@ func main() {
 	customerHandler.RegisterRoutes(r)
 	onboardingHandler.RegisterRoutes(r)
 	userHandler.RegisterRoutes(r)
+	appointmentHandler.RegisterRoutes(r)
 
 	// ── Background Jobs ──────────────────────────────────
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Reminder job — run every minute
 	reminderJob := scheduling.NewReminderJob(
-		appointmentRepo,
+		appointmentUC,
 		serviceRepo,
 		resourceRepo,
 		customerRepo,
