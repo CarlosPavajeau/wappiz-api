@@ -16,6 +16,7 @@ import (
 type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*Tenant, error)
 	FindByUserID(ctx context.Context, userID string) (*Tenant, error)
+	FindTenantIDByUserID(ctx context.Context, userID string) (uuid.UUID, error)
 	FindBySlug(ctx context.Context, slug string) (*Tenant, error)
 	Create(ctx context.Context, t *Tenant) error
 	Update(ctx context.Context, t *Tenant) error
@@ -124,6 +125,24 @@ func (r *pgRepository) FindByUserID(ctx context.Context, userID string) (*Tenant
 		return nil, err
 	}
 	return row.toDomain()
+}
+
+func (r *pgRepository) FindTenantIDByUserID(ctx context.Context, userID string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.db.GetContext(ctx, &id, `
+		SELECT t.id
+		FROM tenants t
+		JOIN tenant_users tu ON tu.tenant_id = t.id
+		WHERE tu.user_id = $1 AND t.is_active = true
+		LIMIT 1
+	`, userID)
+	if database.IsNotFound(err) {
+		return uuid.UUID{}, apperrors.ErrNotFound
+	}
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+	return id, nil
 }
 
 func (r *pgRepository) Create(ctx context.Context, t *Tenant) error {

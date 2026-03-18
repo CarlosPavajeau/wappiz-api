@@ -12,7 +12,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
 	"wappiz/internal/config"
 	"wappiz/internal/features/admin"
@@ -66,13 +65,7 @@ func main() {
 	// ── Use Cases ────────────────────────────────────────
 	userUseCases := users.NewUseCases(userRepo)
 	tenantUC := tenants.NewUseCases(tenantRepo)
-	jwt.InitTenantFinder(func(ctx context.Context, userID string) (uuid.UUID, error) {
-		t, err := tenantUC.FindByUserID(ctx, userID)
-		if err != nil {
-			return uuid.UUID{}, err
-		}
-		return t.ID, nil
-	})
+	jwt.InitTenantFinder(tenantRepo.FindTenantIDByUserID)
 	onboardingUC := onboarding.NewUseCases(
 		onboardingRepo,
 		tenantUC,
