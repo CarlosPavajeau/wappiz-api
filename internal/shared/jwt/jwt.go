@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/base64"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 	"strings"
@@ -74,10 +76,10 @@ type jwkEntry struct {
 	// RSA
 	N string `json:"n"`
 	E string `json:"e"`
-	// EC
+	// EC / OKP
 	Crv string `json:"crv"`
 	X   string `json:"x"`
-	Y   string `json:"y"`
+	Y   string `json:"y"` // not present in OKP
 }
 
 type jwksResponse struct {
@@ -110,17 +112,22 @@ func (v *Verifier) doHTTPFetch() error {
 	next := make(map[string]any, len(set.Keys))
 	for _, k := range set.Keys {
 		if k.Kid == "" {
+			log.Printf("[jwt] skipping JWKS entry with empty kid (kty=%s alg=%s)", k.Kty, k.Alg)
 			continue
 		}
 		if k.Use != "" && k.Use != "sig" {
+			log.Printf("[jwt] skipping JWKS key kid=%s use=%s (not a signing key)", k.Kid, k.Use)
 			continue // skip non-signing keys (e.g. encryption keys)
 		}
 		pub, err := parseJWK(k)
 		if err != nil {
+			log.Printf("[jwt] skipping malformed JWKS key kid=%s kty=%s: %v", k.Kid, k.Kty, err)
 			continue // skip malformed keys; don't fail the whole set
 		}
 		next[k.Kid] = pub
 	}
+
+	log.Printf("[jwt] JWKS refreshed: loaded %d signing key(s) from %s", len(next), v.jwksURL)
 
 	v.cacheMu.Lock()
 	v.cache = next
@@ -181,6 +188,13 @@ func (v *Verifier) lookupKey(kid string) (any, error) {
 	v.cacheMu.RUnlock()
 
 	if !ok {
+		v.cacheMu.RLock()
+		cachedKids := make([]string, 0, len(v.cache))
+		for k := range v.cache {
+			cachedKids = append(cachedKids, k)
+		}
+		v.cacheMu.RUnlock()
+		log.Printf("[jwt] signing key %q not found in JWKS after refresh; available kids: %v", kid, cachedKids)
 		return nil, fmt.Errorf("signing key %q not found in JWKS", kid)
 	}
 	return key, nil
@@ -190,17 +204,22 @@ func (v *Verifier) lookupKey(kid string) (any, error) {
 func (v *Verifier) VerifyToken(tokenStr string) (*Claims, error) {
 	kid, alg, err := extractTokenHeader(tokenStr)
 	if err != nil {
+		log.Printf("[jwt] malformed token header: %v", err)
 		return nil, errors.New("malformed token")
 	}
+
+	log.Printf("[jwt] verifying token: kid=%q alg=%q", kid, alg)
 
 	// Enforce algorithm allowlist before touching any key material.
 	// This prevents algorithm confusion attacks (e.g. RS256 → HS256, alg:none).
 	if !isAllowedAlg(alg) {
+		log.Printf("[jwt] rejected: algorithm %q is not in the allowlist", alg)
 		return nil, fmt.Errorf("algorithm %q is not permitted", alg)
 	}
 
 	key, err := v.lookupKey(kid)
 	if err != nil {
+		log.Printf("[jwt] key lookup failed for kid=%q: %v", kid, err)
 		return nil, err
 	}
 
@@ -209,28 +228,34 @@ func (v *Verifier) VerifyToken(tokenStr string) (*Claims, error) {
 	}
 	if v.issuer != "" {
 		opts = append(opts, gojwt.WithIssuer(v.issuer))
+		log.Printf("[jwt] issuer validation enabled: expected iss=%q", v.issuer)
 	}
 
 	token, err := gojwt.ParseWithClaims(tokenStr, &Claims{},
 		func(t *gojwt.Token) (any, error) {
 			// Re-confirm the algorithm after full header parsing.
 			switch t.Method.(type) {
-			case *gojwt.SigningMethodRSA, *gojwt.SigningMethodECDSA:
+			case *gojwt.SigningMethodRSA, *gojwt.SigningMethodECDSA, *gojwt.SigningMethodEd25519:
 				return key, nil
 			default:
+				log.Printf("[jwt] rejected: unexpected signing method %T", t.Method)
 				return nil, errors.New("unexpected signing method")
 			}
 		},
 		opts...,
 	)
 	if err != nil {
+		log.Printf("[jwt] ParseWithClaims failed for kid=%q alg=%q: %v", kid, alg, err)
 		return nil, err
 	}
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
+		log.Printf("[jwt] token parsed but claims are invalid: ok=%v valid=%v", ok, token.Valid)
 		return nil, errors.New("invalid token")
 	}
+
+	log.Printf("[jwt] token valid: user_id=%s tenant_id=%s role=%s", claims.UserID, claims.TenantID, claims.Role)
 	return claims, nil
 }
 
@@ -242,6 +267,8 @@ func parseJWK(k jwkEntry) (any, error) {
 		return parseRSAKey(k)
 	case "EC":
 		return parseECKey(k)
+	case "OKP":
+		return parseOKPKey(k)
 	default:
 		return nil, fmt.Errorf("unsupported key type %q", k.Kty)
 	}
@@ -304,6 +331,20 @@ func parseECKey(k jwkEntry) (*ecdsa.PublicKey, error) {
 	return pub, nil
 }
 
+func parseOKPKey(k jwkEntry) (ed25519.PublicKey, error) {
+	if k.Crv != "Ed25519" {
+		return nil, fmt.Errorf("unsupported OKP curve %q (only Ed25519 is supported)", k.Crv)
+	}
+	xBytes, err := base64.RawURLEncoding.DecodeString(k.X)
+	if err != nil {
+		return nil, fmt.Errorf("decode x: %w", err)
+	}
+	if len(xBytes) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("Ed25519 public key must be %d bytes, got %d", ed25519.PublicKeySize, len(xBytes))
+	}
+	return ed25519.PublicKey(xBytes), nil
+}
+
 // extractTokenHeader decodes the JWT header segment to read kid and alg
 // without performing any signature verification.
 func extractTokenHeader(tokenStr string) (kid, alg string, err error) {
@@ -332,7 +373,7 @@ func extractTokenHeader(tokenStr string) (kid, alg string, err error) {
 // algorithm confusion attacks.
 func isAllowedAlg(alg string) bool {
 	switch alg {
-	case "RS256", "RS384", "RS512", "ES256", "ES384", "ES512":
+	case "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA":
 		return true
 	default:
 		return false
@@ -370,6 +411,8 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		header := c.GetHeader("Authorization")
 		if len(header) < 8 || header[:7] != "Bearer " {
+			log.Printf("[jwt] missing or malformed Authorization header on %s %s (len=%d)",
+				c.Request.Method, c.Request.URL.Path, len(header))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
@@ -377,12 +420,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims, err := defaultVerifier.VerifyToken(header[7:])
 		if err != nil {
 			if errors.Is(err, gojwt.ErrTokenExpired) {
+				log.Printf("[jwt] token expired on %s %s", c.Request.Method, c.Request.URL.Path)
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 					"error": "token_expired",
 					"hint":  "obtain a new token from the authentication service",
 				})
 				return
 			}
+			log.Printf("[jwt] invalid token on %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_token"})
 			return
 		}
