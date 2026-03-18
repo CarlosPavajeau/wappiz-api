@@ -35,7 +35,7 @@ const (
 // Claims holds the JWT payload expected from the external auth service.
 // Field names must match what the external issuer embeds.
 type Claims struct {
-	UserID   string    `json:"user_id"`
+	UserID   string    `json:"id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	Role     string    `json:"role"`
 	gojwt.RegisteredClaims
