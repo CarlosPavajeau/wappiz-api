@@ -97,9 +97,10 @@ func main() {
 
 	// Webhook (WhatsApp)
 	webhookHandler := scheduling.NewHandler(machine, tenantRepo, cfg.WebhookVerifyToken)
-	webhook := r.Group("/")
-	webhook.Use(middleware.WhatsAppSignature(cfg.WhatsappAppSecret))
-	webhookHandler.RegisterRoutes(webhook)
+	r.GET("/webhook", webhookHandler.Verify)
+	webhookSigned := r.Group("/")
+	webhookSigned.Use(middleware.WhatsAppSignature(cfg.WhatsappAppSecret))
+	webhookSigned.POST("/webhook", webhookHandler.Handle)
 
 	// REST API
 	adminHandler := admin.NewHandler(adminUC)
