@@ -26,16 +26,16 @@ const (
 	// AccessTokenDuration is kept for callers that reference it externally.
 	AccessTokenDuration = 15 * time.Minute
 
-	jwksCacheTTL       = 15 * time.Minute
-	jwksFetchTimeout   = 10 * time.Second
-	jwksMaxBodyBytes   = 64 * 1024 // 64 KB — prevent memory exhaustion
-	minForceRefresh    = 5 * time.Second
+	jwksCacheTTL     = 15 * time.Minute
+	jwksFetchTimeout = 10 * time.Second
+	jwksMaxBodyBytes = 64 * 1024 // 64 KB — prevent memory exhaustion
+	minForceRefresh  = 5 * time.Second
 )
 
 // Claims holds the JWT payload expected from the external auth service.
 // Field names must match what the external issuer embeds.
 type Claims struct {
-	UserID   uuid.UUID `json:"user_id"`
+	UserID   string    `json:"user_id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	Role     string    `json:"role"`
 	gojwt.RegisteredClaims
