@@ -87,6 +87,10 @@ func (uc *UseCases) FindByID(ctx context.Context, id uuid.UUID) (*Tenant, error)
 	return uc.repo.FindByID(ctx, id)
 }
 
+func (uc *UseCases) FindByUserID(ctx context.Context, userID string) (*Tenant, error) {
+	return uc.repo.FindByUserID(ctx, userID)
+}
+
 func (uc *UseCases) FindBySlug(ctx context.Context, slug string) (*Tenant, error) {
 	return uc.repo.FindBySlug(ctx, slug)
 }

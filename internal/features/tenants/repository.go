@@ -15,6 +15,7 @@ import (
 
 type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*Tenant, error)
+	FindByUserID(ctx context.Context, userID string) (*Tenant, error)
 	FindBySlug(ctx context.Context, slug string) (*Tenant, error)
 	Create(ctx context.Context, t *Tenant) error
 	Update(ctx context.Context, t *Tenant) error
@@ -94,6 +95,27 @@ func (r *pgRepository) FindBySlug(ctx context.Context, slug string) (*Tenant, er
 		FROM tenants
 		WHERE slug = $1 AND is_active = true
 	`, slug)
+
+	if database.IsNotFound(err) {
+		return nil, apperrors.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return row.toDomain()
+}
+
+func (r *pgRepository) FindByUserID(ctx context.Context, userID string) (*Tenant, error) {
+	var row tenantRow
+	err := r.db.GetContext(ctx, &row, `
+		SELECT t.id, t.name, t.slug, t.timezone, t.currency, t.plan, t.plan_expires_at,
+		       t.appointments_this_month, t.month_reset_at, t.is_active, t.settings,
+		       t.created_at, t.updated_at
+		FROM tenants t
+		JOIN tenant_users tu ON tu.tenant_id = t.id
+		WHERE tu.user_id = $1 AND t.is_active = true
+		LIMIT 1
+	`, userID)
 
 	if database.IsNotFound(err) {
 		return nil, apperrors.ErrNotFound

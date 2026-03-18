@@ -28,6 +28,7 @@ func NewHandler(uc *UseCases, ob OnboardingInitializer) *Handler {
 //
 //	POST /api/v1/tenants           — create a new tenant
 //	GET  /api/v1/tenants/me        — get current tenant info
+//	GET  /api/v1/tenants/by-user   — get tenant by authenticated user ID
 //	PUT  /api/v1/tenants/settings  — update tenant settings
 //	POST /api/v1/tenants/whatsapp  — connect WhatsApp config
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
@@ -36,8 +37,21 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		protected.POST("", h.CreateTenant)
 		protected.GET("/me", h.GetTenant)
+		protected.GET("/by-user", h.GetTenantByUser)
 		protected.PUT("/settings", h.UpdateSettings)
 		protected.POST("/whatsapp", h.ConnectWhatsapp)
+	}
+}
+
+func tenantResponse(t *Tenant) gin.H {
+	return gin.H{
+		"id":       t.ID,
+		"name":     t.Name,
+		"slug":     t.Slug,
+		"timezone": t.Timezone,
+		"currency": t.Currency,
+		"plan":     t.Plan,
+		"settings": t.Settings,
 	}
 }
 
@@ -64,14 +78,7 @@ func (h *Handler) CreateTenant(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"id":       tenant.ID,
-		"name":     tenant.Name,
-		"slug":     tenant.Slug,
-		"timezone": tenant.Timezone,
-		"currency": tenant.Currency,
-		"plan":     tenant.Plan,
-	})
+	c.JSON(http.StatusCreated, tenantResponse(tenant))
 }
 
 type updateSettingsRequest struct {
@@ -95,15 +102,18 @@ func (h *Handler) GetTenant(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":       tenant.ID,
-		"name":     tenant.Name,
-		"slug":     tenant.Slug,
-		"timezone": tenant.Timezone,
-		"currency": tenant.Currency,
-		"plan":     tenant.Plan,
-		"settings": tenant.Settings,
-	})
+	c.JSON(http.StatusOK, tenantResponse(tenant))
+}
+
+func (h *Handler) GetTenantByUser(c *gin.Context) {
+	userID := jwt.UserIDFromContext(c)
+	tenant, err := h.useCases.FindByUserID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "tenant not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, tenantResponse(tenant))
 }
 
 func (h *Handler) UpdateSettings(c *gin.Context) {
