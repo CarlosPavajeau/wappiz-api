@@ -62,7 +62,14 @@ type stepWhatsAppRequest struct {
 }
 
 func (h *Handler) GetProgress(c *gin.Context) {
-	tenantID := jwt.TenantIDFromContext(c)
+	tenantID, ok := jwt.TenantIDFromContextOK(c)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"currentStep": StepAccount,
+			"isCompleted": false,
+		})
+		return
+	}
 
 	progress, err := h.useCases.GetProgress(c.Request.Context(), tenantID)
 	if err != nil {

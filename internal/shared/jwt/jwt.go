@@ -467,6 +467,17 @@ func TenantIDFromContext(c *gin.Context) uuid.UUID {
 	return c.MustGet("tenant_id").(uuid.UUID)
 }
 
+// TenantIDFromContextOK returns the tenant UUID and whether it was present.
+// Use this when the tenant may not exist yet (e.g. first-time registration).
+func TenantIDFromContextOK(c *gin.Context) (uuid.UUID, bool) {
+	v, exists := c.Get("tenant_id")
+	if !exists {
+		return uuid.UUID{}, false
+	}
+	id, ok := v.(uuid.UUID)
+	return id, ok
+}
+
 func UserIDFromContext(c *gin.Context) string {
 	return c.MustGet("user_id").(string)
 }
