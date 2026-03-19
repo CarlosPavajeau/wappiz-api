@@ -30,10 +30,14 @@ type Tenant struct {
 }
 
 type TenantSettings struct {
-	WelcomeMessage  string `json:"welcome_message,omitempty"`
-	BotName         string `json:"bot_name,omitempty"`
-	CancellationMsg string `json:"cancellation_message,omitempty"`
-	ContactEmail    string `json:"contact_email,omitempty"`
+	WelcomeMessage           string `json:"welcome_message,omitempty"`
+	BotName                  string `json:"bot_name,omitempty"`
+	CancellationMsg          string `json:"cancellation_message,omitempty"`
+	ContactEmail             string `json:"contact_email,omitempty"`
+	LateCancelHours          int    `json:"late_cancel_hours"`            // default: 2
+	AutoBlockAfterNoShows    int    `json:"auto_block_after_no_shows"`    // default: 3
+	AutoBlockAfterLateCancel int    `json:"auto_block_after_late_cancel"` // default: 3
+	SendWarningBeforeBlock   bool   `json:"send_warning_before_block"`
 }
 
 type WhatsappConfig struct {
