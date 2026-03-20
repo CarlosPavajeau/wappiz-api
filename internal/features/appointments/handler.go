@@ -101,8 +101,9 @@ func (h *Handler) UpdateStatus(c *gin.Context) {
 
 	tenantID := jwt.TenantIDFromContext(c)
 	updatedBy := jwt.UserIDFromContext(c)
+	updatedByRole, _ := c.Get("role")
 
-	err = h.useCases.UpdateStatus(c.Request.Context(), id, tenantID, req.Status, updatedBy, req.Reason)
+	err = h.useCases.UpdateStatus(c.Request.Context(), id, tenantID, req.Status, updatedBy, updatedByRole.(string), req.Reason)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "appointment not found"})

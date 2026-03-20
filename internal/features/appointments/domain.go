@@ -31,6 +31,17 @@ type Appointment struct {
 	CompletedAt *time.Time
 }
 
+type AppointmentStatusHistory struct {
+	ID            uuid.UUID
+	AppointmentID uuid.UUID
+	FromStatus    string
+	ToStatus      string
+	ChangedBy     string
+	ChangedByRole string
+	Reason        string
+	CreatedAt     time.Time
+}
+
 type AppointmentWithDetails struct {
 	ID             uuid.UUID
 	StartsAt       time.Time
