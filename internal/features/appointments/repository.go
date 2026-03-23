@@ -258,9 +258,10 @@ func (r *pgAppointmentRepository) FindStatusHistory(ctx context.Context, appoint
 
 	err := r.db.SelectContext(ctx, &rows, `
         SELECT h.id, h.appointment_id, h.from_status, h.to_status,
-               h.changed_by, h.changed_by_role, h.reason, h.created_at
+               u.name, h.changed_by_role, h.reason, h.created_at
         FROM appointment_status_history h
         JOIN appointments a ON a.id = h.appointment_id
+        JOIN users u ON u.id = h.changed_by
         WHERE h.appointment_id = $1 AND a.tenant_id = $2
         ORDER BY h.created_at ASC
     `, appointmentID, tenantID)
