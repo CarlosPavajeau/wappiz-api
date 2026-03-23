@@ -82,7 +82,7 @@ func (uc *UseCases) ActivateTenant(ctx context.Context, input ActivateTenantInpu
 	go func() {
 		err := uc.mailer.Send(bgContext, mailer.Email{
 			To:      pending.ContactEmail,
-			Subject: "🎉 Tu WhatsApp ya está activo — Turnio",
+			Subject: "🎉 Tu WhatsApp ya está activo — Wappiz",
 			Body:    buildActivationEmail(pending.TenantName, input.DisplayPhoneNumber),
 		})
 		if err != nil {
