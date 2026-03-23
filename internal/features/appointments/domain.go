@@ -36,7 +36,7 @@ type AppointmentStatusHistory struct {
 	AppointmentID uuid.UUID
 	FromStatus    string
 	ToStatus      string
-	ChangedBy     string
+	ChangedBy     *string
 	ChangedByRole string
 	Reason        string
 	CreatedAt     time.Time

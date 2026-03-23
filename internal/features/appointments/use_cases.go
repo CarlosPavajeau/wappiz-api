@@ -71,7 +71,7 @@ func (uc *UseCases) GetByID(ctx context.Context, id, tenantID uuid.UUID) (*Appoi
 	return uc.repository.FindByID(ctx, id, tenantID)
 }
 
-func (uc *UseCases) Cancel(ctx context.Context, id uuid.UUID, cancelledBy, reason string) error {
+func (uc *UseCases) Cancel(ctx context.Context, id uuid.UUID, cancelledBy *string, reason string) error {
 	return uc.repository.UpdateStatus(ctx, id, "cancelled", cancelledBy, reason)
 }
 
@@ -98,7 +98,7 @@ func (uc *UseCases) GetStatusHistory(ctx context.Context, id, tenantID uuid.UUID
 	return uc.repository.FindStatusHistory(ctx, id, tenantID)
 }
 
-func (uc *UseCases) UpdateStatus(ctx context.Context, id, tenantID uuid.UUID, newStatus, updatedBy, updatedByRole, reason string) error {
+func (uc *UseCases) UpdateStatus(ctx context.Context, id, tenantID uuid.UUID, newStatus string, updatedBy *string, updatedByRole, reason string) error {
 	appt, err := uc.repository.FindByID(ctx, id, tenantID)
 	if err != nil {
 		return err

@@ -22,8 +22,8 @@ type Repository interface {
 	FindByDate(ctx context.Context, tenantID uuid.UUID, date time.Time) ([]Appointment, error)
 	Search(ctx context.Context, tenantID uuid.UUID, date time.Time, filters ListFilters) ([]AppointmentWithDetails, error)
 
-	UpdateStatus(ctx context.Context, id uuid.UUID, status, cancelledBy, reason string) error
-	UpdateStatusWithHistory(ctx context.Context, id uuid.UUID, status, cancelledBy, reason string, h *AppointmentStatusHistory) error
+	UpdateStatus(ctx context.Context, id uuid.UUID, status string, cancelledBy *string, reason string) error
+	UpdateStatusWithHistory(ctx context.Context, id uuid.UUID, status string, cancelledBy *string, reason string, h *AppointmentStatusHistory) error
 	FindStatusHistory(ctx context.Context, appointmentID, tenantID uuid.UUID) ([]AppointmentStatusHistory, error)
 	MarkReminderSent(ctx context.Context, id uuid.UUID, reminderType string) error
 }
@@ -207,7 +207,7 @@ func (r *pgAppointmentRepository) FindUpcomingForReminders(ctx context.Context) 
 	return result, nil
 }
 
-func (r *pgAppointmentRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status, cancelledBy, reason string) error {
+func (r *pgAppointmentRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status string, cancelledBy *string, reason string) error {
 	_, err := r.db.ExecContext(ctx, `
         UPDATE appointments
         SET status = $1, cancelled_by = $2, cancel_reason = $3, updated_at = NOW()
@@ -216,7 +216,7 @@ func (r *pgAppointmentRepository) UpdateStatus(ctx context.Context, id uuid.UUID
 	return err
 }
 
-func (r *pgAppointmentRepository) UpdateStatusWithHistory(ctx context.Context, id uuid.UUID, status, cancelledBy, reason string, h *AppointmentStatusHistory) error {
+func (r *pgAppointmentRepository) UpdateStatusWithHistory(ctx context.Context, id uuid.UUID, status string, cancelledBy *string, reason string, h *AppointmentStatusHistory) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
@@ -250,7 +250,7 @@ func (r *pgAppointmentRepository) FindStatusHistory(ctx context.Context, appoint
 		AppointmentID uuid.UUID `db:"appointment_id"`
 		FromStatus    string    `db:"from_status"`
 		ToStatus      string    `db:"to_status"`
-		ChangedBy     string    `db:"changed_by"`
+		ChangedBy     *string   `db:"changed_by"`
 		ChangedByRole string    `db:"changed_by_role"`
 		Reason        string    `db:"reason"`
 		CreatedAt     time.Time `db:"created_at"`
@@ -261,7 +261,7 @@ func (r *pgAppointmentRepository) FindStatusHistory(ctx context.Context, appoint
                u.name as changed_by, h.changed_by_role, h.reason, h.created_at
         FROM appointment_status_history h
         JOIN appointments a ON a.id = h.appointment_id
-        JOIN users u ON u.id = h.changed_by
+        LEFT JOIN users u ON u.id = h.changed_by
         WHERE h.appointment_id = $1 AND a.tenant_id = $2
         ORDER BY h.created_at ASC
     `, appointmentID, tenantID)

@@ -567,7 +567,7 @@ func (sm *StateMachine) handleCancelExecute(ctx context.Context, msg IncomingMes
 	}
 
 	if err := sm.useCases.appointmentSvc.UpdateStatus(
-		ctx, appointmentID, msg.TenantID, "cancelled", customer.ID.String(), "customer", "Cancelado por el cliente",
+		ctx, appointmentID, msg.TenantID, "cancelled", nil, "customer", "Cancelado por el cliente",
 	); err != nil {
 		log.Printf("[scheduling] ERROR cancelling appointment | id=%s err=%v", appointmentID, err)
 		return sm.wa.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,

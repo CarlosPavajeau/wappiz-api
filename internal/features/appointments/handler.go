@@ -87,7 +87,7 @@ type statusHistoryResponse struct {
 	ID            uuid.UUID `json:"id"`
 	FromStatus    string    `json:"fromStatus"`
 	ToStatus      string    `json:"toStatus"`
-	ChangedBy     string    `json:"changedBy"`
+	ChangedBy     *string   `json:"changedBy"`
 	ChangedByRole string    `json:"changedByRole"`
 	Reason        string    `json:"reason"`
 	CreatedAt     time.Time `json:"createdAt"`
@@ -148,10 +148,10 @@ func (h *Handler) UpdateStatus(c *gin.Context) {
 	}
 
 	tenantID := jwt.TenantIDFromContext(c)
-	updatedBy := jwt.UserIDFromContext(c)
+	updatedByStr := jwt.UserIDFromContext(c)
 	updatedByRole, _ := c.Get("role")
 
-	err = h.useCases.UpdateStatus(c.Request.Context(), id, tenantID, req.Status, updatedBy, updatedByRole.(string), req.Reason)
+	err = h.useCases.UpdateStatus(c.Request.Context(), id, tenantID, req.Status, &updatedByStr, updatedByRole.(string), req.Reason)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "appointment not found"})
