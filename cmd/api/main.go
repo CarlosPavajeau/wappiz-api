@@ -78,7 +78,7 @@ func main() {
 	serviceUC := services.NewUseCases(serviceRepo)
 	resourceUC := resources.NewUseCases(resourceRepo, serviceRepo)
 	customerUC := customers.NewUseCases(customerRepo)
-	appointmentUC := appointments.NewUseCases(appointmentRepo)
+	appointmentUC := appointments.NewUseCases(appointmentRepo, customerRepo, tenantRepo, wa)
 
 	schedulingUC := scheduling.NewUseCases(
 		sessionRepo,

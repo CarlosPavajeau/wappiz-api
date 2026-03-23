@@ -2,18 +2,29 @@ package appointments
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"time"
+	"wappiz/internal/features/customers"
+	"wappiz/internal/features/tenants"
+	"wappiz/internal/platform/whatsapp"
 
 	"github.com/google/uuid"
 )
 
 type UseCases struct {
-	repository Repository
+	repository   Repository
+	customerRepo customers.Repository
+	tenantRepo   tenants.Repository
+	wa           whatsapp.Client
 }
 
-func NewUseCases(repository Repository) *UseCases {
+func NewUseCases(repository Repository, customerRepo customers.Repository, tenantRepo tenants.Repository, wa whatsapp.Client) *UseCases {
 	return &UseCases{
-		repository: repository,
+		repository:   repository,
+		customerRepo: customerRepo,
+		tenantRepo:   tenantRepo,
+		wa:           wa,
 	}
 }
 
@@ -96,7 +107,7 @@ func (uc *UseCases) UpdateStatus(ctx context.Context, id, tenantID uuid.UUID, ne
 	allowed := validTransitions[appt.Status]
 	for _, s := range allowed {
 		if s == newStatus {
-			return uc.repository.UpdateStatusWithHistory(ctx, id, newStatus, updatedBy, reason, &AppointmentStatusHistory{
+			if err := uc.repository.UpdateStatusWithHistory(ctx, id, newStatus, updatedBy, reason, &AppointmentStatusHistory{
 				ID:            uuid.New(),
 				AppointmentID: id,
 				FromStatus:    appt.Status,
@@ -104,9 +115,46 @@ func (uc *UseCases) UpdateStatus(ctx context.Context, id, tenantID uuid.UUID, ne
 				ChangedBy:     updatedBy,
 				ChangedByRole: updatedByRole,
 				Reason:        reason,
-			})
+			}); err != nil {
+				return err
+			}
+
+			if newStatus == "cancelled" && updatedByRole != "customer" {
+				uc.sendCancellationNotification(ctx, appt)
+			}
+
+			return nil
 		}
 	}
 
 	return ErrInvalidTransition
+}
+
+func (uc *UseCases) sendCancellationNotification(ctx context.Context, appt *Appointment) {
+	customer, err := uc.customerRepo.FindByID(ctx, appt.CustomerID)
+	if err != nil {
+		log.Printf("[appointments] sendCancellationNotification: failed to find customer %s: %v", appt.CustomerID, err)
+		return
+	}
+
+	tenant, err := uc.tenantRepo.FindByID(ctx, appt.TenantID)
+	if err != nil {
+		log.Printf("[appointments] sendCancellationNotification: failed to find tenant %s: %v", appt.TenantID, err)
+		return
+	}
+
+	waConfig, err := uc.tenantRepo.FindWhatsappConfig(ctx, appt.TenantID)
+	if err != nil {
+		log.Printf("[appointments] sendCancellationNotification: failed to find whatsapp config for tenant %s: %v", appt.TenantID, err)
+		return
+	}
+
+	body := fmt.Sprintf("Tu cita del *%s* ha sido cancelada.\n\n%s",
+		appt.StartsAt.Format("02/01/2006 03:04 PM"),
+		tenant.CancellationMessage(),
+	)
+
+	if err := uc.wa.SendText(ctx, customer.PhoneNumber, waConfig.PhoneNumberID, waConfig.AccessToken, body); err != nil {
+		log.Printf("[appointments] sendCancellationNotification: failed to send whatsapp to %s: %v", customer.PhoneNumber, err)
+	}
 }
