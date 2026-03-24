@@ -377,6 +377,22 @@ func (r *pgAppointmentRepository) Search(ctx context.Context, tenantID uuid.UUID
 	if filters.CustomerID != nil {
 		extraClauses = append(extraClauses, fmt.Sprintf("a.customer_id = $%d", idx))
 		args = append(args, *filters.CustomerID)
+		idx++
+	}
+
+	if len(filters.Statuses) > 0 {
+		placeholders := make([]string, len(filters.Statuses))
+		for i, s := range filters.Statuses {
+			placeholders[i] = fmt.Sprintf("$%d", idx)
+			args = append(args, s)
+			idx++
+		}
+		extraClauses = append(extraClauses, fmt.Sprintf("a.status IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	baseWhere := "AND a.status != 'cancelled'"
+	if len(filters.Statuses) > 0 {
+		baseWhere = ""
 	}
 
 	query := `
@@ -390,7 +406,7 @@ func (r *pgAppointmentRepository) Search(ctx context.Context, tenantID uuid.UUID
         JOIN customers  c ON c.id = a.customer_id
         WHERE a.tenant_id = $1
           AND a.starts_at >= $2 AND a.starts_at < $3
-          AND a.status != 'cancelled'`
+          ` + baseWhere
 
 	if len(extraClauses) > 0 {
 		query += "\n          AND " + strings.Join(extraClauses, "\n          AND ")

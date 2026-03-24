@@ -52,6 +52,7 @@ type ListFilters struct {
 	ResourceIDs []uuid.UUID
 	ServiceIDs  []uuid.UUID
 	CustomerID  *uuid.UUID
+	Statuses    []string
 }
 
 var validTransitions = map[string][]string{

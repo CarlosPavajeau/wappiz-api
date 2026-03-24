@@ -198,5 +198,7 @@ func parseListFilters(c *gin.Context) (ListFilters, bool) {
 		filters.CustomerID = &id
 	}
 
+	filters.Statuses = c.QueryArray("status")
+
 	return filters, true
 }
