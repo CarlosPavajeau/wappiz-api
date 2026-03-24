@@ -19,12 +19,17 @@ type Repository interface {
 	FindByCustomerID(ctx context.Context, tenantID, customerID uuid.UUID) ([]Appointment, error)
 	FindByCustomerIDWithDetails(ctx context.Context, tenantID, customerID uuid.UUID) ([]AppointmentWithDetails, error)
 	FindUpcomingForReminders(ctx context.Context) ([]Appointment, error)
+	FindUnattended(ctx context.Context) ([]Appointment, error)
+	FindRecentlyCancelled(ctx context.Context) ([]Appointment, error)
 	FindByDate(ctx context.Context, tenantID uuid.UUID, date time.Time) ([]Appointment, error)
 	Search(ctx context.Context, tenantID uuid.UUID, date time.Time, filters ListFilters) ([]AppointmentWithDetails, error)
 
 	UpdateStatusWithHistory(ctx context.Context, id uuid.UUID, status string, changedBy *string, reason string, h *AppointmentStatusHistory) error
 	FindStatusHistory(ctx context.Context, appointmentID, tenantID uuid.UUID) ([]AppointmentStatusHistory, error)
 	MarkReminderSent(ctx context.Context, id uuid.UUID, reminderType string) error
+
+	CountNoShows(ctx context.Context, tenantID, customerID uuid.UUID) (int, error)
+	CountLateCancellations(ctx context.Context, tenantID, customerID uuid.UUID, lateHours int) (int, error)
 }
 
 type pgAppointmentRepository struct {
@@ -343,6 +348,100 @@ func (r *pgAppointmentRepository) FindByDate(ctx context.Context, tenantID uuid.
 		}
 	}
 	return result, nil
+}
+
+func (r *pgAppointmentRepository) FindUnattended(ctx context.Context) ([]Appointment, error) {
+	var rows []struct {
+		ID         uuid.UUID `db:"id"`
+		TenantID   uuid.UUID `db:"tenant_id"`
+		CustomerID uuid.UUID `db:"customer_id"`
+		ResourceID uuid.UUID `db:"resource_id"`
+		ServiceID  uuid.UUID `db:"service_id"`
+		StartsAt   time.Time `db:"starts_at"`
+		EndsAt     time.Time `db:"ends_at"`
+		Status     string    `db:"status"`
+	}
+
+	err := r.db.SelectContext(ctx, &rows, `
+        SELECT id, tenant_id, customer_id, resource_id, service_id, starts_at, ends_at, status
+        FROM appointments
+        WHERE status = 'confirmed'
+          AND starts_at <= NOW() - INTERVAL '30 minutes'
+    `)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]Appointment, len(rows))
+	for i, row := range rows {
+		result[i] = Appointment{
+			ID: row.ID, TenantID: row.TenantID,
+			CustomerID: row.CustomerID, ResourceID: row.ResourceID,
+			ServiceID: row.ServiceID, StartsAt: row.StartsAt,
+			EndsAt: row.EndsAt, Status: row.Status,
+		}
+	}
+	return result, nil
+}
+
+func (r *pgAppointmentRepository) FindRecentlyCancelled(ctx context.Context) ([]Appointment, error) {
+	var rows []struct {
+		ID          uuid.UUID  `db:"id"`
+		TenantID    uuid.UUID  `db:"tenant_id"`
+		CustomerID  uuid.UUID  `db:"customer_id"`
+		ResourceID  uuid.UUID  `db:"resource_id"`
+		ServiceID   uuid.UUID  `db:"service_id"`
+		StartsAt    time.Time  `db:"starts_at"`
+		EndsAt      time.Time  `db:"ends_at"`
+		Status      string     `db:"status"`
+		CancelledAt *time.Time `db:"cancelled_at"`
+	}
+
+	err := r.db.SelectContext(ctx, &rows, `
+        SELECT id, tenant_id, customer_id, resource_id, service_id,
+               starts_at, ends_at, status, cancelled_at
+        FROM appointments
+        WHERE status = 'cancelled'
+          AND cancelled_at IS NOT NULL
+          AND cancelled_at >= NOW() - INTERVAL '10 minutes'
+    `)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]Appointment, len(rows))
+	for i, row := range rows {
+		result[i] = Appointment{
+			ID: row.ID, TenantID: row.TenantID,
+			CustomerID: row.CustomerID, ResourceID: row.ResourceID,
+			ServiceID: row.ServiceID, StartsAt: row.StartsAt,
+			EndsAt: row.EndsAt, Status: row.Status,
+			CancelledAt: row.CancelledAt,
+		}
+	}
+	return result, nil
+}
+
+func (r *pgAppointmentRepository) CountNoShows(ctx context.Context, tenantID, customerID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, `
+        SELECT COUNT(*) FROM appointments
+        WHERE tenant_id = $1 AND customer_id = $2 AND status = 'no_show'
+    `, tenantID, customerID)
+	return count, err
+}
+
+func (r *pgAppointmentRepository) CountLateCancellations(ctx context.Context, tenantID, customerID uuid.UUID, lateHours int) (int, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, `
+        SELECT COUNT(*) FROM appointments
+        WHERE status = 'cancelled'
+          AND customer_id = $2
+          AND tenant_id = $1
+          AND cancelled_at IS NOT NULL
+          AND EXTRACT(EPOCH FROM (starts_at - cancelled_at)) / 3600 < $3
+    `, tenantID, customerID, lateHours)
+	return count, err
 }
 
 func (r *pgAppointmentRepository) Search(ctx context.Context, tenantID uuid.UUID, date time.Time, filters ListFilters) ([]AppointmentWithDetails, error) {

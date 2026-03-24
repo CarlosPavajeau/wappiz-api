@@ -134,11 +134,13 @@ func main() {
 	// Reminder job — run every minute
 	reminderJob := scheduling.NewReminderJob(
 		appointmentUC,
+		appointmentRepo,
 		serviceRepo,
 		resourceRepo,
 		customerRepo,
 		tenantRepo,
 		wa,
+		resendMailer,
 	)
 	go reminderJob.Run(ctx)
 

@@ -34,9 +34,10 @@ type TenantSettings struct {
 	BotName                  string `json:"botName,omitempty"`
 	CancellationMsg          string `json:"cancellationMessage,omitempty"`
 	ContactEmail             string `json:"contactEmail,omitempty"`
-	LateCancelHours          int    `json:"lateCancelHours"`            // default: 2
-	AutoBlockAfterNoShows    int    `json:"autoBlockAfterNoShows"`      // default: 3
-	AutoBlockAfterLateCancel int    `json:"autoBlockAfterLateCancel"`   // default: 3
+	OwnerPhone               string `json:"ownerPhone,omitempty"`
+	LateCancelHours          int    `json:"lateCancelHours"`          // default: 2
+	AutoBlockAfterNoShows    int    `json:"autoBlockAfterNoShows"`    // default: 3
+	AutoBlockAfterLateCancel int    `json:"autoBlockAfterLateCancel"` // default: 3
 	SendWarningBeforeBlock   bool   `json:"sendWarningBeforeBlock"`
 }
 

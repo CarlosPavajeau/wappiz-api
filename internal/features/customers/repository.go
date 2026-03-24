@@ -19,6 +19,7 @@ type Repository interface {
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
 	Block(ctx context.Context, id, tenantID uuid.UUID) error
 	Unblock(ctx context.Context, id, tenantID uuid.UUID) error
+	GetNoShowSummary(ctx context.Context, tenantID, customerID uuid.UUID, lateHours int) (noShows int, lateCancels int, err error)
 }
 
 type pgRepository struct{ db *sqlx.DB }
@@ -130,4 +131,23 @@ func (r *pgRepository) Unblock(ctx context.Context, id, tenantID uuid.UUID) erro
 		WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID)
 	return err
+}
+
+func (r *pgRepository) GetNoShowSummary(ctx context.Context, tenantID, customerID uuid.UUID, lateHours int) (noShows int, lateCancels int, err error) {
+	err = r.db.GetContext(ctx, &noShows, `
+		SELECT COUNT(*) FROM appointments
+		WHERE tenant_id = $1 AND customer_id = $2 AND status = 'no_show'
+	`, tenantID, customerID)
+	if err != nil {
+		return
+	}
+	err = r.db.GetContext(ctx, &lateCancels, `
+		SELECT COUNT(*) FROM appointments
+		WHERE status = 'cancelled'
+		  AND tenant_id = $1
+		  AND customer_id = $2
+		  AND cancelled_at IS NOT NULL
+		  AND EXTRACT(EPOCH FROM (starts_at - cancelled_at)) / 3600 < $3
+	`, tenantID, customerID, lateHours)
+	return
 }

@@ -10,7 +10,7 @@ import (
 	"wappiz/internal/features/resources"
 	"wappiz/internal/features/services"
 	"wappiz/internal/features/tenants"
-
+	"wappiz/internal/platform/mailer"
 	"wappiz/internal/platform/whatsapp"
 )
 
@@ -21,15 +21,18 @@ type ReminderJob struct {
 	customers      customers.Repository
 	tenantRepo     tenants.Repository
 	wa             whatsapp.Client
+	tracker        *NoShowTracker
 }
 
 func NewReminderJob(
 	appointmentSvc AppointmentService,
+	appointmentRepo appointments.Repository,
 	services services.Repository,
 	resources resources.Repository,
 	clients customers.Repository,
 	tenantRepo tenants.Repository,
 	wa whatsapp.Client,
+	ml mailer.Mailer,
 ) *ReminderJob {
 	return &ReminderJob{
 		appointmentSvc: appointmentSvc,
@@ -38,11 +41,12 @@ func NewReminderJob(
 		customers:      clients,
 		tenantRepo:     tenantRepo,
 		wa:             wa,
+		tracker:        NewNoShowTracker(appointmentRepo, clients, tenantRepo, wa, ml),
 	}
 }
 
 func (j *ReminderJob) Run(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
 	log.Println("reminder job started")
@@ -62,6 +66,12 @@ func (j *ReminderJob) Run(ctx context.Context) {
 
 func (j *ReminderJob) process(ctx context.Context) error {
 	log.Printf("checking for upcoming appointments at %s", time.Now().Format(time.RFC3339))
+
+	trackerCtx, cancel := context.WithTimeout(ctx, 4*time.Minute)
+	go func() {
+		defer cancel()
+		j.tracker.Run(trackerCtx)
+	}()
 
 	upcoming, err := j.appointmentSvc.GetUpcomingForReminders(ctx)
 	if err != nil {
