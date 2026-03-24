@@ -56,7 +56,8 @@ type ListFilters struct {
 
 var validTransitions = map[string][]string{
 	"pending":     {"confirmed", "cancelled"},
-	"confirmed":   {"in_progress", "cancelled", "no_show"},
+	"confirmed":   {"check_in", "cancelled", "no_show"},
+	"check_in":    {"in_progress", "cancelled"},
 	"in_progress": {"completed", "cancelled"},
 	"completed":   {},
 	"cancelled":   {},
