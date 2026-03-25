@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 type AppointmentStatus string
@@ -139,13 +138,13 @@ type AppointmentStatusHistory struct {
 }
 
 type Conversation struct {
-	ID          int64                 `db:"id"`
-	CreatedAt   sql.NullTime          `db:"created_at"`
-	UpdatedAt   sql.NullTime          `db:"updated_at"`
-	DeletedAt   sql.NullTime          `db:"deleted_at"`
-	Phone       string                `db:"phone"`
-	CurrentStep sql.NullString        `db:"current_step"`
-	TempData    pqtype.NullRawMessage `db:"temp_data"`
+	ID          int64          `db:"id"`
+	CreatedAt   sql.NullTime   `db:"created_at"`
+	UpdatedAt   sql.NullTime   `db:"updated_at"`
+	DeletedAt   sql.NullTime   `db:"deleted_at"`
+	Phone       string         `db:"phone"`
+	CurrentStep sql.NullString `db:"current_step"`
+	TempData    []byte         `db:"temp_data"`
 }
 
 type ConversationSession struct {
@@ -219,19 +218,19 @@ type Service struct {
 }
 
 type Tenant struct {
-	ID                    uuid.UUID             `db:"id"`
-	Name                  string                `db:"name"`
-	Slug                  string                `db:"slug"`
-	Timezone              string                `db:"timezone"`
-	Currency              string                `db:"currency"`
-	Plan                  string                `db:"plan"`
-	PlanExpiresAt         sql.NullTime          `db:"plan_expires_at"`
-	AppointmentsThisMonth int32                 `db:"appointments_this_month"`
-	MonthResetAt          time.Time             `db:"month_reset_at"`
-	IsActive              bool                  `db:"is_active"`
-	Settings              pqtype.NullRawMessage `db:"settings"`
-	CreatedAt             time.Time             `db:"created_at"`
-	UpdatedAt             time.Time             `db:"updated_at"`
+	ID                    uuid.UUID    `db:"id"`
+	Name                  string       `db:"name"`
+	Slug                  string       `db:"slug"`
+	Timezone              string       `db:"timezone"`
+	Currency              string       `db:"currency"`
+	Plan                  string       `db:"plan"`
+	PlanExpiresAt         sql.NullTime `db:"plan_expires_at"`
+	AppointmentsThisMonth int32        `db:"appointments_this_month"`
+	MonthResetAt          time.Time    `db:"month_reset_at"`
+	IsActive              bool         `db:"is_active"`
+	Settings              []byte       `db:"settings"`
+	CreatedAt             time.Time    `db:"created_at"`
+	UpdatedAt             time.Time    `db:"updated_at"`
 }
 
 type TenantUser struct {

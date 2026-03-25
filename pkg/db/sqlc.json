@@ -31,6 +31,13 @@
                 "type": "[]byte"
               },
               "nullable": true
+            },
+            {
+              "db_type": "jsonb",
+              "go_type": {
+                "type": "[]byte"
+              },
+              "nullable": true
             }
           ]
         }

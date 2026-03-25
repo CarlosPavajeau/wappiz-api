@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 const insertTenant = `-- name: InsertTenant :exec
@@ -40,14 +39,14 @@ INSERT INTO tenants(
 `
 
 type InsertTenantParams struct {
-	ID           uuid.UUID             `db:"id"`
-	Name         string                `db:"name"`
-	Slug         string                `db:"slug"`
-	Timezone     string                `db:"timezone"`
-	Currency     string                `db:"currency"`
-	Plan         string                `db:"plan"`
-	MonthResetAt time.Time             `db:"month_reset_at"`
-	Settings     pqtype.NullRawMessage `db:"settings"`
+	ID           uuid.UUID `db:"id"`
+	Name         string    `db:"name"`
+	Slug         string    `db:"slug"`
+	Timezone     string    `db:"timezone"`
+	Currency     string    `db:"currency"`
+	Plan         string    `db:"plan"`
+	MonthResetAt time.Time `db:"month_reset_at"`
+	Settings     []byte    `db:"settings"`
 }
 
 // InsertTenant

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 const findTenantWhatsappConfigByPhoneNumberID = `-- name: FindTenantWhatsappConfigByPhoneNumberID :one
@@ -44,26 +43,26 @@ LIMIT 1
 `
 
 type FindTenantWhatsappConfigByPhoneNumberIDRow struct {
-	ID                    uuid.UUID             `db:"id"`
-	TenantID              uuid.UUID             `db:"tenant_id"`
-	WabaID                sql.NullString        `db:"waba_id"`
-	PhoneNumberID         sql.NullString        `db:"phone_number_id"`
-	DisplayPhoneNumber    sql.NullString        `db:"display_phone_number"`
-	AccessToken           sql.NullString        `db:"access_token"`
-	TokenExpiresAt        sql.NullTime          `db:"token_expires_at"`
-	IsActive              bool                  `db:"is_active"`
-	VerifiedAt            sql.NullTime          `db:"verified_at"`
-	CreatedAt             time.Time             `db:"created_at"`
-	UpdatedAt             time.Time             `db:"updated_at"`
-	TenantName            string                `db:"tenant_name"`
-	TenantSlug            string                `db:"tenant_slug"`
-	TenantTimezone        string                `db:"tenant_timezone"`
-	TenantCurrency        string                `db:"tenant_currency"`
-	TenantPlan            string                `db:"tenant_plan"`
-	TenantSettings        pqtype.NullRawMessage `db:"tenant_settings"`
-	TenantActive          bool                  `db:"tenant_active"`
-	MonthResetAt          time.Time             `db:"month_reset_at"`
-	AppointmentsThisMonth int32                 `db:"appointments_this_month"`
+	ID                    uuid.UUID      `db:"id"`
+	TenantID              uuid.UUID      `db:"tenant_id"`
+	WabaID                sql.NullString `db:"waba_id"`
+	PhoneNumberID         sql.NullString `db:"phone_number_id"`
+	DisplayPhoneNumber    sql.NullString `db:"display_phone_number"`
+	AccessToken           sql.NullString `db:"access_token"`
+	TokenExpiresAt        sql.NullTime   `db:"token_expires_at"`
+	IsActive              bool           `db:"is_active"`
+	VerifiedAt            sql.NullTime   `db:"verified_at"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	TenantName            string         `db:"tenant_name"`
+	TenantSlug            string         `db:"tenant_slug"`
+	TenantTimezone        string         `db:"tenant_timezone"`
+	TenantCurrency        string         `db:"tenant_currency"`
+	TenantPlan            string         `db:"tenant_plan"`
+	TenantSettings        []byte         `db:"tenant_settings"`
+	TenantActive          bool           `db:"tenant_active"`
+	MonthResetAt          time.Time      `db:"month_reset_at"`
+	AppointmentsThisMonth int32          `db:"appointments_this_month"`
 }
 
 // FindTenantWhatsappConfigByPhoneNumberID

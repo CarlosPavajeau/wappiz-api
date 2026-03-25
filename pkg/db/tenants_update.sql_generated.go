@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 const updateTenant = `-- name: UpdateTenant :exec
@@ -22,10 +21,10 @@ WHERE id = $4
 `
 
 type UpdateTenantParams struct {
-	Name     string                `db:"name"`
-	Timezone string                `db:"timezone"`
-	Settings pqtype.NullRawMessage `db:"settings"`
-	ID       uuid.UUID             `db:"id"`
+	Name     string    `db:"name"`
+	Timezone string    `db:"timezone"`
+	Settings []byte    `db:"settings"`
+	ID       uuid.UUID `db:"id"`
 }
 
 // UpdateTenant
