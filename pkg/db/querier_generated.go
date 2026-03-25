@@ -24,6 +24,84 @@ type Querier interface {
 	//      verified_at          = NOW()
 	//  WHERE tenant_id = $5
 	ActivateTenantWhatsappConfig(ctx context.Context, db DBTX, arg ActivateTenantWhatsappConfigParams) error
+	//DeleteService
+	//
+	//  UPDATE services
+	//  SET is_active = false
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	DeleteService(ctx context.Context, db DBTX, arg DeleteServiceParams) error
+	//FindServiceByID
+	//
+	//  SELECT id,
+	//         tenant_id,
+	//         name,
+	//         description,
+	//         duration_minutes,
+	//         buffer_minutes,
+	//         price,
+	//         is_active,
+	//         sort_order,
+	//         created_at
+	//  FROM services
+	//  WHERE id = $1
+	//    AND is_active = true
+	FindServiceByID(ctx context.Context, db DBTX, id uuid.UUID) (Service, error)
+	//FindServicesByResourceID
+	//
+	//  SELECT s.id,
+	//         s.tenant_id,
+	//         s.name,
+	//         s.description,
+	//         s.duration_minutes,
+	//         s.buffer_minutes,
+	//         s.price,
+	//         s.is_active,
+	//         s.sort_order,
+	//         s.created_at
+	//  FROM services s
+	//           JOIN resource_services rs ON rs.service_id = s.id
+	//  WHERE s.tenant_id = $1
+	//    AND rs.resource_id = $2
+	//    AND s.is_active = true
+	//  ORDER BY s.created_at
+	FindServicesByResourceID(ctx context.Context, db DBTX, arg FindServicesByResourceIDParams) ([]Service, error)
+	//FindServicesByTenantID
+	//
+	//  SELECT id,
+	//         tenant_id,
+	//         name,
+	//         description,
+	//         duration_minutes,
+	//         buffer_minutes,
+	//         price,
+	//         is_active,
+	//         sort_order,
+	//         created_at
+	//  FROM services
+	//  WHERE tenant_id = $1
+	//    AND is_active = true
+	//  ORDER BY created_at
+	FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error)
+	//FindServicesWithAssignedResourceByTenantID
+	//
+	//  SELECT DISTINCT s.id,
+	//                  s.tenant_id,
+	//                  s.name,
+	//                  s.description,
+	//                  s.duration_minutes,
+	//                  s.buffer_minutes,
+	//                  s.price,
+	//                  s.is_active,
+	//                  s.sort_order,
+	//                  s.created_at
+	//  FROM services s
+	//           JOIN resource_services rs ON rs.service_id = s.id
+	//           JOIN resources r ON r.id = rs.resource_id AND r.is_active = true
+	//  WHERE s.tenant_id = $1
+	//    AND s.is_active = true
+	//  ORDER BY s.created_at
+	FindServicesWithAssignedResourceByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error)
 	//FindTenantByID
 	//
 	//  SELECT id,
@@ -145,6 +223,30 @@ type Querier interface {
 	//    AND t.is_active = true
 	//  LIMIT 1
 	FindTenantWhatsappConfigByPhoneNumberID(ctx context.Context, db DBTX, phoneNumberID sql.NullString) (FindTenantWhatsappConfigByPhoneNumberIDRow, error)
+	//InsertService
+	//
+	//  INSERT INTO services(
+	//      id,
+	//      tenant_id,
+	//      name,
+	//      description,
+	//      duration_minutes,
+	//      buffer_minutes,
+	//      price,
+	//      is_active,
+	//      sort_order
+	//  ) VALUES (
+	//      $1,
+	//      $2,
+	//      $3,
+	//      $4,
+	//      $5,
+	//      $6,
+	//      $7,
+	//      true,
+	//      $8
+	//  )
+	InsertService(ctx context.Context, db DBTX, arg InsertServiceParams) error
 	//InsertTenant
 	//
 	//  INSERT INTO tenants(
@@ -193,6 +295,18 @@ type Querier interface {
 	//  VALUES ($1, $2, 'admin')
 	//  ON CONFLICT (user_id, tenant_id) DO NOTHING
 	LinkTenantUser(ctx context.Context, db DBTX, arg LinkTenantUserParams) error
+	//UpdateService
+	//
+	//  UPDATE services
+	//  SET name             = $1,
+	//      description      = $2,
+	//      duration_minutes = $3,
+	//      buffer_minutes   = $4,
+	//      price            = $5,
+	//      sort_order       = $6
+	//  WHERE id = $7
+	//    AND tenant_id = $8
+	UpdateService(ctx context.Context, db DBTX, arg UpdateServiceParams) error
 	//UpdateTenant
 	//
 	//  UPDATE tenants
