@@ -7,19 +7,25 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-type ResendMailer struct {
+type Email struct {
+	To      string
+	Subject string
+	Body    string
+}
+
+type Mailer struct {
 	client    *resend.Client
 	fromEmail string
 }
 
-func NewResendMailer(apiKey, fromEmail string) Mailer {
-	return &ResendMailer{
+func New(apiKey, fromEmail string) Mailer {
+	return Mailer{
 		client:    resend.NewClient(apiKey),
 		fromEmail: fromEmail,
 	}
 }
 
-func (m *ResendMailer) Send(ctx context.Context, email Email) error {
+func (m *Mailer) Send(ctx context.Context, email Email) error {
 	params := &resend.SendEmailRequest{
 		From:    m.fromEmail,
 		To:      []string{email.To},
