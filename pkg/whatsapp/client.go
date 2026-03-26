@@ -22,7 +22,7 @@ type httpClient struct {
 	http       *http.Client
 }
 
-func NewClient(baseURL, apiVersion string) Client {
+func New(baseURL, apiVersion string) Client {
 	return &httpClient{
 		baseURL:    baseURL,
 		apiVersion: apiVersion,
