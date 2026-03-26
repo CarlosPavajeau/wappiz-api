@@ -32,6 +32,13 @@ type Querier interface {
 	//  WHERE tenant_id = $1
 	//    AND current_step < $2
 	AdvanceOnboardingStep(ctx context.Context, db DBTX, arg AdvanceOnboardingStepParams) error
+	//BlockCustomer
+	//
+	//  UPDATE customers
+	//  SET is_blocked = true
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	BlockCustomer(ctx context.Context, db DBTX, arg BlockCustomerParams) error
 	//CompleteOnboardingProgress
 	//
 	//  UPDATE onboarding_progress
@@ -39,6 +46,36 @@ type Querier interface {
 	//      updated_at   = NOW()
 	//  WHERE tenant_id = $1
 	CompleteOnboardingProgress(ctx context.Context, db DBTX, tenantID uuid.UUID) error
+	//CountCustomerLateCancels
+	//
+	//  SELECT COUNT(*) as late_cancels
+	//  FROM appointments
+	//  WHERE status = 'cancelled'
+	//    AND tenant_id = $1
+	//    AND customer_id = $2
+	//    AND cancelled_at IS NOT NULL
+	//    AND EXTRACT(EPOCH FROM (starts_at - cancelled_at)) / 3600 < $3::int
+	CountCustomerLateCancels(ctx context.Context, db DBTX, arg CountCustomerLateCancelsParams) (int64, error)
+	//CountCustomerNoShows
+	//
+	//  SELECT COUNT(*) as no_shows
+	//  FROM appointments
+	//  WHERE tenant_id = $1
+	//    AND customer_id = $2
+	//    AND status = 'no_show'
+	CountCustomerNoShows(ctx context.Context, db DBTX, arg CountCustomerNoShowsParams) (int64, error)
+	//DeleteConversationSession
+	//
+	//  DELETE
+	//  FROM conversation_sessions
+	//  WHERE id = $1
+	DeleteConversationSession(ctx context.Context, db DBTX, id uuid.UUID) error
+	//DeleteExpiredConversationSessions
+	//
+	//  DELETE
+	//  FROM conversation_sessions
+	//  WHERE expires_at < NOW()
+	DeleteExpiredConversationSessions(ctx context.Context, db DBTX) error
 	//DeleteResource
 	//
 	//  UPDATE resources
@@ -73,6 +110,97 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND resource_id = $2
 	DeleteWorkingHour(ctx context.Context, db DBTX, arg DeleteWorkingHourParams) error
+	//FindAppointmentByID
+	//
+	//  SELECT id,
+	//         tenant_id,
+	//         resource_id,
+	//         service_id,
+	//         customer_id,
+	//         starts_at,
+	//         ends_at,
+	//         status,
+	//         price_at_booking
+	//  FROM appointments
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	//  LIMIT 1
+	FindAppointmentByID(ctx context.Context, db DBTX, arg FindAppointmentByIDParams) (FindAppointmentByIDRow, error)
+	//FindAppointmentStatusHistory
+	//
+	//  SELECT h.id,
+	//         h.appointment_id,
+	//         h.from_status,
+	//         h.to_status,
+	//         u.name as changed_by,
+	//         h.changed_by_role,
+	//         h.reason,
+	//         h.created_at
+	//  FROM appointment_status_history h
+	//           JOIN appointments a ON a.id = h.appointment_id
+	//           LEFT JOIN users u ON u.id = h.changed_by
+	//  WHERE h.appointment_id = $1
+	//    AND a.tenant_id = $2
+	//  ORDER BY h.created_at
+	FindAppointmentStatusHistory(ctx context.Context, db DBTX, arg FindAppointmentStatusHistoryParams) ([]FindAppointmentStatusHistoryRow, error)
+	//FindAppointmentsByCustomerID
+	//
+	//  SELECT a.id,
+	//         a.starts_at,
+	//         a.ends_at,
+	//         a.status,
+	//         a.price_at_booking,
+	//         r.name AS resource_name,
+	//         s.name AS service_name
+	//  FROM appointments a
+	//           JOIN resources r ON r.id = a.resource_id
+	//           JOIN services s ON s.id = a.service_id
+	//  WHERE a.tenant_id = $1
+	//    AND a.customer_id = $2
+	//    AND a.status = 'confirmed'
+	//    AND a.starts_at > NOW()
+	//  ORDER BY a.starts_at
+	//  LIMIT 5
+	FindAppointmentsByCustomerID(ctx context.Context, db DBTX, arg FindAppointmentsByCustomerIDParams) ([]FindAppointmentsByCustomerIDRow, error)
+	//FindCustomerActiveConversationSession
+	//
+	//  SELECT id,
+	//         tenant_id,
+	//         whatsapp_config_id,
+	//         customer_id,
+	//         step,
+	//         data,
+	//         expires_at,
+	//         created_at,
+	//         updated_at
+	//  FROM conversation_sessions
+	//  WHERE tenant_id = $1
+	//    AND customer_id = $2
+	//    AND expires_at > NOW()
+	//  LIMIT 1
+	FindCustomerActiveConversationSession(ctx context.Context, db DBTX, arg FindCustomerActiveConversationSessionParams) (ConversationSession, error)
+	//FindCustomerByID
+	//
+	//  SELECT id, tenant_id, phone_number, name, is_blocked, created_at
+	//  FROM customers
+	//  WHERE id = $1
+	//  LIMIT 1
+	FindCustomerByID(ctx context.Context, db DBTX, id uuid.UUID) (Customer, error)
+	//FindCustomerByPhoneNumber
+	//
+	//  SELECT id, tenant_id, phone_number, name, is_blocked, created_at
+	//  FROM customers
+	//  WHERE tenant_id = $1
+	//    AND phone_number = $2
+	//  LIMIT 1
+	FindCustomerByPhoneNumber(ctx context.Context, db DBTX, arg FindCustomerByPhoneNumberParams) (Customer, error)
+	//FindCustomersByTenant
+	//
+	//  SELECT id, tenant_id, phone_number, name, is_blocked, created_at
+	//  FROM customers
+	//  WHERE tenant_id = $1
+	//  ORDER BY created_at DESC
+	FindCustomersByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Customer, error)
 	//FindOnboardingProgressByTenant
 	//
 	//  SELECT id, tenant_id, current_step, completed_at, created_at, updated_at
@@ -80,6 +208,22 @@ type Querier interface {
 	//  WHERE tenant_id = $1
 	//  LIMIT 1
 	FindOnboardingProgressByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) (OnboardingProgress, error)
+	//FindRecentlyCancelledAppointments
+	//
+	//  SELECT id,
+	//         tenant_id,
+	//         customer_id,
+	//         resource_id,
+	//         service_id,
+	//         starts_at,
+	//         ends_at,
+	//         status,
+	//         cancelled_at
+	//  FROM appointments
+	//  WHERE status = 'cancelled'
+	//    AND cancelled_at IS NOT NULL
+	//    AND cancelled_at >= NOW() - INTERVAL '10 minutes'
+	FindRecentlyCancelledAppointments(ctx context.Context, db DBTX) ([]FindRecentlyCancelledAppointmentsRow, error)
 	//FindResourceById
 	//
 	//  SELECT id,
@@ -95,6 +239,16 @@ type Querier interface {
 	//    AND is_active = true
 	//  LIMIT 1
 	FindResourceById(ctx context.Context, db DBTX, id uuid.UUID) (FindResourceByIdRow, error)
+	//FindResourceOccupiedSlots
+	//
+	//  SELECT starts_at, ends_at
+	//  FROM appointments
+	//  WHERE resource_id = $1
+	//    AND starts_at >= $2
+	//    AND ends_at <= $3
+	//    AND status NOT IN ('cancelled', 'no_show')
+	//  ORDER BY starts_at
+	FindResourceOccupiedSlots(ctx context.Context, db DBTX, arg FindResourceOccupiedSlotsParams) ([]FindResourceOccupiedSlotsRow, error)
 	//FindResourceScheduleOverrides
 	//
 	//  SELECT id,
@@ -346,6 +500,107 @@ type Querier interface {
 	//    AND t.is_active = true
 	//  LIMIT 1
 	FindTenantWhatsappConfigByPhoneNumberID(ctx context.Context, db DBTX, phoneNumberID sql.NullString) (FindTenantWhatsappConfigByPhoneNumberIDRow, error)
+	//FindUnattendedAppointments
+	//
+	//  SELECT id,
+	//         tenant_id,
+	//         customer_id,
+	//         resource_id,
+	//         service_id,
+	//         starts_at,
+	//         ends_at,
+	//         status
+	//  FROM appointments
+	//  WHERE status = 'confirmed'
+	//    AND starts_at <= NOW() - INTERVAL '30 minutes'
+	FindUnattendedAppointments(ctx context.Context, db DBTX) ([]FindUnattendedAppointmentsRow, error)
+	//FindUpcomingAppointments
+	//
+	//  SELECT id, tenant_id, customer_id, resource_id, service_id, starts_at, ends_at
+	//  FROM appointments
+	//  WHERE status = 'confirmed'
+	//    AND (
+	//      (reminder_24h_sent_at IS NULL AND starts_at BETWEEN NOW() + INTERVAL '23 hours' AND NOW() + INTERVAL '25 hours')
+	//          OR
+	//      (reminder_1h_sent_at IS NULL AND starts_at BETWEEN NOW() + INTERVAL '50 minutes' AND NOW() + INTERVAL '70 minutes')
+	//      )
+	FindUpcomingAppointments(ctx context.Context, db DBTX) ([]FindUpcomingAppointmentsRow, error)
+	//InsertAppointment
+	//
+	//  INSERT INTO appointments(
+	//      id,
+	//      tenant_id,
+	//      resource_id,
+	//      service_id,
+	//      customer_id,
+	//      starts_at,
+	//      ends_at,
+	//      status,
+	//      price_at_booking
+	//  ) VALUES (
+	//      $1,
+	//      $2,
+	//      $3,
+	//      $4,
+	//      $5,
+	//      $6,
+	//      $7,
+	//      'confirmed',
+	//      $8
+	//  )
+	InsertAppointment(ctx context.Context, db DBTX, arg InsertAppointmentParams) error
+	//InsertAppointmentStatusHistory
+	//
+	//  INSERT INTO appointment_status_history(
+	//      id,
+	//      appointment_id,
+	//      from_status,
+	//      to_status,
+	//      changed_by,
+	//      changed_by_role,
+	//      reason,
+	//      created_at
+	//  ) VALUES (
+	//      $1,
+	//      $2,
+	//      $3,
+	//      $4,
+	//      $5,
+	//      $6,
+	//      $7,
+	//      NOW()
+	//  )
+	InsertAppointmentStatusHistory(ctx context.Context, db DBTX, arg InsertAppointmentStatusHistoryParams) error
+	//InsertConversationSession
+	//
+	//  INSERT INTO conversation_sessions(
+	//      id,
+	//      tenant_id,
+	//      whatsapp_config_id,
+	//      customer_id,
+	//      step,
+	//      data,
+	//      expires_at
+	//  ) VALUES (
+	//      $1,
+	//      $2,
+	//      $3,
+	//      $4,
+	//      $5,
+	//      $6,
+	//      $7
+	//  ) ON CONFLICT (tenant_id, customer_id) DO UPDATE
+	//      SET step       = EXCLUDED.step,
+	//          data       = EXCLUDED.data,
+	//          expires_at = EXCLUDED.expires_at,
+	//          updated_at = NOW()
+	InsertConversationSession(ctx context.Context, db DBTX, arg InsertConversationSessionParams) error
+	//InsertCustomer
+	//
+	//  INSERT INTO customers (id, tenant_id, phone_number)
+	//  VALUES ($1, $2, $3)
+	//  ON CONFLICT (tenant_id, phone_number) DO NOTHING
+	InsertCustomer(ctx context.Context, db DBTX, arg InsertCustomerParams) error
 	//InsertOnboardingProgress
 	//
 	//  INSERT INTO onboarding_progress (id, tenant_id, current_step)
@@ -473,6 +728,67 @@ type Querier interface {
 	//  VALUES ($1, $2, 'admin')
 	//  ON CONFLICT (user_id, tenant_id) DO NOTHING
 	LinkTenantUser(ctx context.Context, db DBTX, arg LinkTenantUserParams) error
+	//Mark24hAppointmentReminderSent
+	//
+	//  UPDATE appointments
+	//  SET reminder_24h_sent_at = COALESCE(reminder_24h_sent_at, $1),
+	//      reminder_1h_sent_at  = COALESCE(reminder_1h_sent_at, $2)
+	//  WHERE id = $3
+	Mark24hAppointmentReminderSent(ctx context.Context, db DBTX, arg Mark24hAppointmentReminderSentParams) error
+	//SearchAppointments
+	//
+	//  SELECT a.id,
+	//         a.starts_at,
+	//         a.ends_at,
+	//         a.status,
+	//         a.price_at_booking,
+	//         r.name                           AS resource_name,
+	//         s.name                           AS service_name,
+	//         COALESCE(c.name, c.phone_number) AS customer_name
+	//  FROM appointments a
+	//           JOIN resources r ON r.id = a.resource_id
+	//           JOIN services s ON s.id = a.service_id
+	//           JOIN customers c ON c.id = a.customer_id
+	//  WHERE a.tenant_id = $1
+	//    AND a.starts_at >= $2
+	//    AND a.starts_at < $3
+	//    AND a.resource_id = ANY ($4)
+	//    AND a.service_id = ANY ($5)
+	//    AND a.status = ANY ($6)
+	//  ORDER BY a.starts_at
+	SearchAppointments(ctx context.Context, db DBTX, arg SearchAppointmentsParams) ([]SearchAppointmentsRow, error)
+	//UnblockCustomer
+	//
+	//  UPDATE customers
+	//  SET is_blocked = false
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	UnblockCustomer(ctx context.Context, db DBTX, arg UnblockCustomerParams) error
+	//UpdateAppointment
+	//
+	//  UPDATE appointments
+	//  SET status        = $1,
+	//      updated_at    = NOW(),
+	//      cancelled_by  = $2,
+	//      cancel_reason = $3,
+	//      completed_at  = $4
+	//  WHERE id = $5
+	UpdateAppointment(ctx context.Context, db DBTX, arg UpdateAppointmentParams) error
+	//UpdateConversationSession
+	//
+	//  UPDATE conversation_sessions
+	//  SET step       = $1,
+	//      data       = $2,
+	//      expires_at = $3,
+	//      updated_at = NOW()
+	//  WHERE id = $4
+	UpdateConversationSession(ctx context.Context, db DBTX, arg UpdateConversationSessionParams) error
+	//UpdateCustomer
+	//
+	//  UPDATE customers
+	//  SET name = $1
+	//  WHERE id = $2
+	UpdateCustomer(ctx context.Context, db DBTX, arg UpdateCustomerParams) error
 	//UpdateResource
 	//
 	//  UPDATE resources
