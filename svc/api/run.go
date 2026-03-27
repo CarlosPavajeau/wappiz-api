@@ -69,12 +69,13 @@ func Run(cfg Config) error {
 
 	g := gin.Default()
 	routes.Register(g, &routes.Services{
-		Database:     database,
-		Mailer:       mailerSvc,
-		Whatsapp:     waSvc,
-		StateMachine: stateMachineSvc,
-		AdminEmail:   cfg.AdminEmail,
-		AppSecret:    cfg.WhatsappAppSecret,
+		Database:      database,
+		Mailer:        mailerSvc,
+		Whatsapp:      waSvc,
+		StateMachine:  stateMachineSvc,
+		AdminEmail:    cfg.AdminEmail,
+		AppSecret:     cfg.WhatsappAppSecret,
+		EncryptionKey: encKey,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 	"wappiz/internal/services/state_machine"
+	"wappiz/pkg/crypto"
 	"wappiz/pkg/db"
 	"wappiz/pkg/logger"
 
@@ -77,8 +78,9 @@ type Status struct {
 }
 
 type Handler struct {
-	DB           db.Database
-	StateMachine state_machine.StateMachineService
+	DB            db.Database
+	StateMachine  state_machine.StateMachineService
+	EncryptionKey []byte
 }
 
 func (h *Handler) Method() string {
@@ -149,11 +151,16 @@ func (h *Handler) processPayload(req Request) {
 }
 
 func (h *Handler) buildIncomingMessage(msg Message, metadata Metadata, waConfig db.FindTenantWhatsappConfigByPhoneNumberIDRow) (*state_machine.IncomingMessage, error) {
+	accessToken, err := crypto.Decrypt(waConfig.AccessToken.String, h.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
 	incoming := &state_machine.IncomingMessage{
 		TenantID:         waConfig.TenantID,
 		WhatsappConfigID: waConfig.ID,
 		PhoneNumberID:    metadata.PhoneNumberID,
-		AccessToken:      waConfig.AccessToken.String,
+		AccessToken:      accessToken,
 		From:             msg.From,
 		ReceivedAt:       time.Now(),
 	}

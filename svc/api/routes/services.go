@@ -8,10 +8,11 @@ import (
 )
 
 type Services struct {
-	Database     db.Database
-	Mailer       mailer.Mailer
-	Whatsapp     whatsapp.Client
-	StateMachine state_machine.StateMachineService
-	AdminEmail   string
-	AppSecret    string
+	Database      db.Database
+	Mailer        mailer.Mailer
+	Whatsapp      whatsapp.Client
+	StateMachine  state_machine.StateMachineService
+	AdminEmail    string
+	AppSecret     string
+	EncryptionKey []byte
 }
