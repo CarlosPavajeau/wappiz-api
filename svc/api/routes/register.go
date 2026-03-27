@@ -46,63 +46,63 @@ import (
 )
 
 func Register(g *gin.Engine, svc *Services) {
-	defaultMiddlewares := []gin.HandlerFunc{
-		cors.New(cors.Config{
-			AllowAllOrigins:  true,
-			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-			AllowCredentials: false,
-		}),
-		jwt.AuthMiddleware(),
-	}
+	// CORS must be global so OPTIONS preflight requests are handled before route matching
+	g.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: false,
+	}))
+
+	auth := g.Group("/", jwt.AuthMiddleware())
 
 	// ---------------------------------------------------------------------------
 	// v1/tenants
-	RegisterRoute(g, defaultMiddlewares, &tenants_create_tenant.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &tenants_find_current.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &tenants_find_by_user.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &tenants_update_tenant.Handler{DB: svc.Database})
+	RegisterRoute(auth, &tenants_create_tenant.Handler{DB: svc.Database})
+	RegisterRoute(auth, &tenants_find_current.Handler{DB: svc.Database})
+	RegisterRoute(auth, &tenants_find_by_user.Handler{DB: svc.Database})
+	RegisterRoute(auth, &tenants_update_tenant.Handler{DB: svc.Database})
 
 	// v1/services
-	RegisterRoute(g, defaultMiddlewares, &services_create_service.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &services_list_services.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &services_update_service.Handler{DB: svc.Database})
+	RegisterRoute(auth, &services_create_service.Handler{DB: svc.Database})
+	RegisterRoute(auth, &services_list_services.Handler{DB: svc.Database})
+	RegisterRoute(auth, &services_update_service.Handler{DB: svc.Database})
 
 	// v1/appointments
-	RegisterRoute(g, defaultMiddlewares, &appointments_search.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &appointments_get_status_history.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &appointments_update_status.Handler{DB: svc.Database, Whatsapp: svc.Whatsapp})
+	RegisterRoute(auth, &appointments_search.Handler{DB: svc.Database})
+	RegisterRoute(auth, &appointments_get_status_history.Handler{DB: svc.Database})
+	RegisterRoute(auth, &appointments_update_status.Handler{DB: svc.Database, Whatsapp: svc.Whatsapp})
 
 	// v1/onboarding
-	RegisterRoute(g, defaultMiddlewares, &onboarding_get_progress.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &onboarding_get_templates.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &onboarding_step_barber.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &onboarding_step_services.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &onboarding_step_whatsapp.Handler{DB: svc.Database, Mailer: svc.Mailer, AdminEmail: svc.AdminEmail})
+	RegisterRoute(auth, &onboarding_get_progress.Handler{DB: svc.Database})
+	RegisterRoute(auth, &onboarding_get_templates.Handler{DB: svc.Database})
+	RegisterRoute(auth, &onboarding_step_barber.Handler{DB: svc.Database})
+	RegisterRoute(auth, &onboarding_step_services.Handler{DB: svc.Database})
+	RegisterRoute(auth, &onboarding_step_whatsapp.Handler{DB: svc.Database, Mailer: svc.Mailer, AdminEmail: svc.AdminEmail})
 
 	// v1/customers
-	RegisterRoute(g, defaultMiddlewares, &customers_list.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &customers_get.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &customers_block.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &customers_unblock.Handler{DB: svc.Database})
+	RegisterRoute(auth, &customers_list.Handler{DB: svc.Database})
+	RegisterRoute(auth, &customers_get.Handler{DB: svc.Database})
+	RegisterRoute(auth, &customers_block.Handler{DB: svc.Database})
+	RegisterRoute(auth, &customers_unblock.Handler{DB: svc.Database})
 
 	// v1/resources
-	RegisterRoute(g, defaultMiddlewares, &resources_list.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_get.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_create.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_update.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_delete.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_update_sort_order.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_upsert_working_hours.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_delete_working_hours.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_list_overrides.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_create_override.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_delete_override.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_assign_services.Handler{DB: svc.Database})
-	RegisterRoute(g, defaultMiddlewares, &resources_get_services.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_list.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_get.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_create.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_update.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_delete.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_update_sort_order.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_upsert_working_hours.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_delete_working_hours.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_list_overrides.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_create_override.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_delete_override.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_assign_services.Handler{DB: svc.Database})
+	RegisterRoute(auth, &resources_get_services.Handler{DB: svc.Database})
 
 	// v1/admin
-	adminMiddlewares := append(defaultMiddlewares, func(c *gin.Context) {
+	admin := auth.Group("/", func(c *gin.Context) {
 		if c.GetString("role") != "admin" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 			return
@@ -110,23 +110,19 @@ func Register(g *gin.Engine, svc *Services) {
 		c.Next()
 	})
 
-	RegisterRoute(g, adminMiddlewares, &admin_find_pending_activations.Handler{DB: svc.Database})
-	RegisterRoute(g, adminMiddlewares, &admin_activate_tenant.Handler{DB: svc.Database, Mailer: svc.Mailer})
+	RegisterRoute(admin, &admin_find_pending_activations.Handler{DB: svc.Database})
+	RegisterRoute(admin, &admin_activate_tenant.Handler{DB: svc.Database, Mailer: svc.Mailer})
 
 	// webhooks
-	RegisterRoute(g, defaultMiddlewares, &webhooks_verify_webhook.Handler{})
+	RegisterRoute(auth, &webhooks_verify_webhook.Handler{})
 
-	processWebhookMiddlewares := append(defaultMiddlewares, middleware.WhatsAppSignature(svc.AppSecret))
-	RegisterRoute(g, processWebhookMiddlewares, &webhooks_process_webhook.Handler{
+	webhook := auth.Group("/", middleware.WhatsAppSignature(svc.AppSecret))
+	RegisterRoute(webhook, &webhooks_process_webhook.Handler{
 		DB:           svc.Database,
 		StateMachine: svc.StateMachine,
 	})
 }
 
-func RegisterRoute(g *gin.Engine, middlewares []gin.HandlerFunc, route Route) {
-	path := route.Path()
-	method := route.Method()
-	handleFn := route.Handle
-
-	g.Group("/").Use(middlewares...).Handle(method, path, handleFn)
+func RegisterRoute(g gin.IRoutes, route Route) {
+	g.Handle(route.Method(), route.Path(), route.Handle)
 }
