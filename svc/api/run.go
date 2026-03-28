@@ -67,7 +67,11 @@ func Run(cfg Config) error {
 		SlotFinder: slotFinder,
 	})
 
-	g := gin.Default()
+	g := gin.New()
+
+	g.Use(gin.Recovery())
+	g.Use(logMiddleware())
+
 	routes.Register(g, &routes.Services{
 		Database:      database,
 		Mailer:        mailerSvc,
@@ -126,4 +130,29 @@ func Run(cfg Config) error {
 	log.Println("server stopped")
 
 	return nil
+}
+
+func logMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+
+		c.Next()
+
+		logger.Info("request",
+			"method", c.Request.Method,
+			"path", path,
+			"query", query,
+			"status", c.Writer.Status(),
+			"latency", time.Since(start),
+			"client_ip", c.ClientIP(),
+		)
+
+		if len(c.Errors) > 0 {
+			for _, err := range c.Errors {
+				logger.Error("request error", "error", err.Error())
+			}
+		}
+	}
 }
