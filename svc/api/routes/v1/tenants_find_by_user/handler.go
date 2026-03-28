@@ -10,26 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type TenantSettings struct {
-	WelcomeMessage           string `json:"welcomeMessage,omitempty"`
-	BotName                  string `json:"botName,omitempty"`
-	CancellationMsg          string `json:"cancellationMessage,omitempty"`
-	ContactEmail             string `json:"contactEmail,omitempty"`
-	OwnerPhone               string `json:"ownerPhone,omitempty"`
-	LateCancelHours          int    `json:"lateCancelHours"`          // default: 2
-	AutoBlockAfterNoShows    int    `json:"autoBlockAfterNoShows"`    // default: 3
-	AutoBlockAfterLateCancel int    `json:"autoBlockAfterLateCancel"` // default: 3
-	SendWarningBeforeBlock   bool   `json:"sendWarningBeforeBlock"`
-}
-
 type Response struct {
-	ID       uuid.UUID      `json:"id"`
-	Name     string         `json:"name"`
-	Slug     string         `json:"slug"`
-	TimeZone string         `json:"time_zone"`
-	Currency string         `json:"currency"`
-	Plan     string         `json:"plan"`
-	Settings TenantSettings `json:"settings"`
+	ID       uuid.UUID         `json:"id"`
+	Name     string            `json:"name"`
+	Slug     string            `json:"slug"`
+	TimeZone string            `json:"time_zone"`
+	Currency string            `json:"currency"`
+	Plan     string            `json:"plan"`
+	Settings db.TenantSettings `json:"settings"`
 }
 
 type Handler struct {
@@ -52,7 +40,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
-	var settings TenantSettings
+	var settings db.TenantSettings
 	if err := json.Unmarshal(tenant.Settings, &settings); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
