@@ -166,7 +166,21 @@ func (s *service) handleEntry(ctx context.Context, msg IncomingMessage, customer
 		return fmt.Errorf("find tenant: %w", err)
 	}
 
-	body := "👋 Bienvenido a " + tenant.Name + "\n\n¿Qué deseas hacer?" // TODO: Use tenant's configured welcome message
+	var tenantSettings db.TenantSettings
+	if err := json.Unmarshal(tenant.Settings, &tenantSettings); err != nil {
+		logger.Warn("[scheduling] failed to unmarshal tenant settings",
+			"err", err)
+		return err
+	}
+
+	var welcomeMsg string
+	if len(tenantSettings.WelcomeMessage) > 0 {
+		welcomeMsg = tenantSettings.WelcomeMessage
+	} else {
+		welcomeMsg = "¡Hola! Bienvenido a *" + tenant.Name + "*"
+	}
+
+	body := "👋 " + welcomeMsg + "\n\n¿Qué deseas hacer?"
 	buttons := []whatsapp.Button{
 		{Type: "reply", Reply: whatsapp.ButtonReply{ID: "action_schedule", Title: "📅 Agendar cita"}},
 		{Type: "reply", Reply: whatsapp.ButtonReply{ID: "action_my_appointments", Title: "📋 Mis citas"}},
