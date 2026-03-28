@@ -58,7 +58,10 @@ func Run(cfg Config) error {
 		return tenant.ID, nil
 	})
 
-	mailerSvc := mailer.New(cfg.ResendAPIKey, cfg.ResendFromEmail)
+	mailerSvc := mailer.New(mailer.Config{
+		ApiKey:    cfg.ResendAPIKey,
+		FromEmail: cfg.ResendFromEmail,
+	})
 	waSvc := whatsapp.New(cfg.WhatsappBaseURL, cfg.WhatsappAPIVersion)
 	slotFinder := slot_finder.New(database)
 	stateMachineSvc := state_machine.New(state_machine.Config{
