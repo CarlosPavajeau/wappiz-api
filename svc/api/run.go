@@ -95,7 +95,11 @@ func Run(cfg Config) error {
 		Whatsapp: waSvc,
 	})
 
-	nowShowTrackerJob := no_show_tracker_job.New(database)
+	nowShowTrackerJob := no_show_tracker_job.New(no_show_tracker_job.Config{
+		DB:            database,
+		Whatsapp:      waSvc,
+		EncryptionKey: encKey,
+	})
 
 	cleanupSessionJob := cleanup_sessions_job.New(database)
 
