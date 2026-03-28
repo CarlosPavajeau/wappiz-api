@@ -62,7 +62,10 @@ func Run(cfg Config) error {
 		ApiKey:    cfg.ResendAPIKey,
 		FromEmail: cfg.ResendFromEmail,
 	})
-	waSvc := whatsapp.New(cfg.WhatsappBaseURL, cfg.WhatsappAPIVersion)
+	waSvc := whatsapp.New(whatsapp.Config{
+		BaseURL:    cfg.WhatsappBaseURL,
+		ApiVersion: cfg.WhatsappAPIVersion,
+	})
 	slotFinder := slot_finder.New(database)
 	stateMachineSvc := state_machine.New(state_machine.Config{
 		DB:         database,
