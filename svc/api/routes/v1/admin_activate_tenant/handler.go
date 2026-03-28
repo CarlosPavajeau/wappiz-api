@@ -61,7 +61,7 @@ func (h *Handler) Handle(c *gin.Context) {
 	})
 
 	if err != nil {
-		logger.Warn("[admin] activate whatsapp config: %w", err)
+		logger.Warn("[admin] activate whatsapp config", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to activate tenant"})
 		return
 	}
