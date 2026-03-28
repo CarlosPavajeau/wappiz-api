@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 	"wappiz/internal/services/slot_finder"
+	"wappiz/pkg/date_formatter"
 	"wappiz/pkg/date_parser"
 	"wappiz/pkg/db"
 	apperrors "wappiz/pkg/errors"
@@ -746,9 +747,8 @@ func (s *service) handleMyAppointments(ctx context.Context, msg IncomingMessage,
 
 	text := fmt.Sprintf("¡Hola, %s! 👋 Aquí están tus próximas citas:\n", customerName)
 	for i, a := range appt {
-		// TODO: Format time with correct timezone and language
-		date := a.StartsAt.Format("Monday 02 Jan")
-		timeStr := a.StartsAt.Format("03:04 PM")
+		date := date_formatter.FormatTime(a.StartsAt, "Monday 02 Jan")
+		timeStr := date_formatter.FormatTime(a.StartsAt, "03:04 PM")
 
 		text += fmt.Sprintf("\n*%d.* 📌 *%s*\n", i+1, a.ServiceName)
 		text += fmt.Sprintf("   🗓️ %s a las %s\n", date, timeStr)
