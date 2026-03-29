@@ -370,25 +370,7 @@ func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, ses
 		sessionData.StartsAt = &result.StartsAt
 		sessionData.DateAttempts = 0
 
-		if customer.Name.Valid {
-			sessionData.ConfirmedName = new(customer.Name.String)
-			session.Step = string(StepConfirm)
-
-			session, err = s.updateSession(ctx, session, sessionData)
-			if err != nil {
-				return fmt.Errorf("update session: %w", err)
-			}
-
-			return s.sendConfirmation(ctx, msg, session)
-		}
-
-		session.Step = string(StepAwaitingName)
-		if _, err = s.updateSession(ctx, session, sessionData); err != nil {
-			return fmt.Errorf("update session: %w", err)
-		}
-
-		return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
-			"Antes de confirmar, ¿cuál es tu nombre? 😊")
+		return s.advanceToConfirmOrName(ctx, msg, session, sessionData, customer)
 	}
 
 	if len(result.Slots) == 0 {
@@ -551,12 +533,7 @@ func (s *service) handleSelectTime(ctx context.Context, msg IncomingMessage, ses
 	sessionData.StartsAt = &startsAt
 	sessionData.ResourceID = &resourceID
 
-	session, err = s.updateSession(ctx, session, sessionData)
-	if err != nil {
-		return fmt.Errorf("update session: %w", err)
-	}
-
-	return s.advanceToConfirmOrName(ctx, msg, session, customer)
+	return s.advanceToConfirmOrName(ctx, msg, session, sessionData, customer)
 }
 
 func (s *service) handleAwaitingName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.Customer) error {
@@ -1104,12 +1081,7 @@ func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMess
 	return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body)
 }
 
-func (s *service) advanceToConfirmOrName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.Customer) error {
-	var sessionData SessionData
-	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
-		return err
-	}
-
+func (s *service) advanceToConfirmOrName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, sessionData SessionData, customer db.Customer) error {
 	var err error
 	if customer.Name.Valid {
 		sessionData.ConfirmedName = new(customer.Name.String)
