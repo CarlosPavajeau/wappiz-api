@@ -134,8 +134,6 @@ func Run(ctx context.Context, cfg Config) error {
 			return fmt.Errorf("server failed: %w", err)
 		}
 
-		logger.Info("server started successfully")
-
 		return nil
 	})
 
