@@ -4,11 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 	"wappiz/internal/jobs/cleanup_sessions_job"
 	"wappiz/internal/jobs/no_show_tracker_job"
@@ -19,6 +15,7 @@ import (
 	"wappiz/pkg/jwt"
 	"wappiz/pkg/logger"
 	"wappiz/pkg/mailer"
+	"wappiz/pkg/runner"
 	"wappiz/pkg/whatsapp"
 	"wappiz/svc/api/routes"
 
@@ -26,7 +23,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func Run(cfg Config) error {
+// nolint:gocognit
+func Run(ctx context.Context, cfg Config) error {
+	r := runner.New()
+	defer r.Recover()
+
 	database, err := db.New(db.Config{
 		PrimaryDns: cfg.DatabaseURL,
 	})
@@ -34,7 +35,7 @@ func Run(cfg Config) error {
 		return fmt.Errorf("unable to create db: %w", err)
 	}
 
-	defer database.Close()
+	r.Defer(database.Close)
 
 	encKey := []byte(cfg.EncryptionKey)
 	if len(encKey) != 32 {
@@ -83,12 +84,11 @@ func Run(cfg Config) error {
 		Mailer:        mailerSvc,
 		Whatsapp:      waSvc,
 		StateMachine:  stateMachineSvc,
+		Runner:        r,
 		AdminEmail:    cfg.AdminEmail,
 		AppSecret:     cfg.WhatsappAppSecret,
 		EncryptionKey: encKey,
 	})
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	reminderJob := reminder_job.New(reminder_job.Config{
 		DB:       database,
@@ -103,9 +103,20 @@ func Run(cfg Config) error {
 
 	cleanupSessionJob := cleanup_sessions_job.New(database)
 
-	go reminderJob.Run(ctx)
-	go nowShowTrackerJob.Run(ctx)
-	go cleanupSessionJob.Run(ctx)
+	r.Go(func(ctx context.Context) error {
+		reminderJob.Run(ctx)
+		return nil
+	})
+
+	r.Go(func(ctx context.Context) error {
+		nowShowTrackerJob.Run(ctx)
+		return nil
+	})
+
+	r.Go(func(ctx context.Context) error {
+		cleanupSessionJob.Run(ctx)
+		return nil
+	})
 
 	// Server with graceful shutdown
 	srv := &http.Server{
@@ -115,29 +126,26 @@ func Run(cfg Config) error {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	// TODO: enhance this
-	go func() {
-		log.Printf("server running on %s", cfg.Port)
+	r.DeferCtx(srv.Shutdown)
+
+	r.Go(func(ctx context.Context) error {
+		logger.Info("server starting", "port", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
+			return fmt.Errorf("server failed: %w", err)
 		}
-	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+		logger.Info("server started successfully")
 
-	log.Println("shutting down...")
-	cancel()
+		return nil
+	})
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer shutdownCancel()
-
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("server forced to shutdown: %v", err)
+	// Wait for either OS signals or context cancellation, then shutdown
+	if err := r.Wait(ctx, runner.WithTimeout(time.Minute)); err != nil {
+		logger.Error("Shutdown failed", "error", err)
+		return fmt.Errorf("shutdown failed: %w", err)
 	}
 
-	log.Println("server stopped")
+	logger.Info("API server shut down successfully")
 
 	return nil
 }
