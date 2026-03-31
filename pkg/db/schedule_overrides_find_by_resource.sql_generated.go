@@ -35,14 +35,14 @@ type FindResourceScheduleOverridesParams struct {
 }
 
 type FindResourceScheduleOverridesRow struct {
-	ID         uuid.UUID    `db:"id"`
-	ResourceID uuid.UUID    `db:"resource_id"`
-	Date       time.Time    `db:"date"`
-	IsDayOff   bool         `db:"is_day_off"`
-	StartTime  sql.NullTime `db:"start_time"`
-	EndTime    sql.NullTime `db:"end_time"`
-	Reason     string       `db:"reason"`
-	CreatedAt  time.Time    `db:"created_at"`
+	ID         uuid.UUID      `db:"id"`
+	ResourceID uuid.UUID      `db:"resource_id"`
+	Date       time.Time      `db:"date"`
+	IsDayOff   bool           `db:"is_day_off"`
+	StartTime  sql.NullString `db:"start_time"`
+	EndTime    sql.NullString `db:"end_time"`
+	Reason     string         `db:"reason"`
+	CreatedAt  time.Time      `db:"created_at"`
 }
 
 // FindResourceScheduleOverrides

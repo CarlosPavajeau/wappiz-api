@@ -121,8 +121,8 @@ func (s *service) resolveWorkingHours(ctx context.Context, resourceID uuid.UUID,
 	loc := date.Location()
 
 	if override != nil && !override.IsDayOff && override.StartTime.Valid {
-		start := parseTimeOnDate(date, override.StartTime.Time.Format("15:04:05"), loc)
-		end := parseTimeOnDate(date, override.EndTime.Time.Format("15:04:05"), loc)
+		start := parseTimeOnDate(date, override.StartTime.String, loc)
+		end := parseTimeOnDate(date, override.EndTime.String, loc)
 		return &start, &end, nil
 	}
 

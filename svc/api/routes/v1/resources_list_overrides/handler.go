@@ -76,10 +76,10 @@ func (h *Handler) Handle(c *gin.Context) {
 	for i, o := range overrides {
 		var startTime, endTime string
 		if o.StartTime.Valid {
-			startTime = o.StartTime.Time.String()
+			startTime = o.StartTime.String
 		}
 		if o.EndTime.Valid {
-			endTime = o.EndTime.Time.String()
+			endTime = o.EndTime.String
 		}
 
 		response[i] = Response{
