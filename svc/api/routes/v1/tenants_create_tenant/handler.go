@@ -85,6 +85,15 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
+	if err := db.Query.InsertOnboardingProgress(c.Request.Context(), txx, db.InsertOnboardingProgressParams{
+		ID:          uuid.New(),
+		TenantID:    tenantID,
+		CurrentStep: int32(2),
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	txx.Commit()
 
 	c.JSON(http.StatusCreated, gin.H{"tenant": userID})
