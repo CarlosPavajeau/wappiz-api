@@ -174,7 +174,7 @@ func logMiddleware() gin.HandlerFunc {
 			"host", c.Request.Host,
 			"user_agent", c.Request.UserAgent(),
 			"status", c.Writer.Status(),
-			"latency(ms)", time.Since(start).Milliseconds(),
+			"latency_ms", time.Since(start).Milliseconds(),
 			"client_ip", c.ClientIP(),
 		))
 
