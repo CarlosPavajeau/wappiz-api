@@ -2,6 +2,7 @@ package logger
 
 import (
 	"log/slog"
+	"os"
 	"sync"
 )
 
@@ -15,7 +16,7 @@ var (
 
 func init() {
 	mu = sync.Mutex{}
-	logger = slog.Default()
+	logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	sampler = AlwaysSample{}
 }
 
