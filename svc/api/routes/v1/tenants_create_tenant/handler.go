@@ -75,12 +75,10 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
-	err = db.Query.LinkTenantUser(c.Request.Context(), txx, db.LinkTenantUserParams{
+	if err := db.Query.LinkTenantUser(c.Request.Context(), txx, db.LinkTenantUserParams{
 		TenantID: tenantID,
 		UserID:   userID,
-	})
-
-	if err != nil {
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
