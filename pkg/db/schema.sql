@@ -256,4 +256,5 @@ CREATE INDEX idx_appointments_reminder
 CREATE INDEX idx_appointments_status_date
     ON appointments (tenant_id, status, starts_at);
 CREATE INDEX idx_status_history_appointment ON appointment_status_history (appointment_id);
-CREATE INDEX idx_sessions_lookup ON conversation_sessions (tenant_id, customer_id);
+CREATE INDEX idx_sessions_active_lookup
+    ON conversation_sessions (tenant_id, customer_id, expires_at);
