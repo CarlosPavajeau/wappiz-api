@@ -56,5 +56,5 @@ func (h *Handler) Handle(c *gin.Context) {
 		result[i] = toResponse(cu)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"customers": result})
+	c.JSON(http.StatusOK, result)
 }
