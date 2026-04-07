@@ -777,7 +777,7 @@ func (s *service) handleCancelFlow(ctx context.Context, msg IncomingMessage, cus
 		rows = append(rows, whatsapp.ListRow{
 			ID:          "cancel_" + a.ID.String(),
 			Title:       date_formatter.FormatTime(a.StartsAt, "02/01 03:04 PM"),
-			Description: a.ResourceName,
+			Description: fmt.Sprintf("%s · %s", a.ResourceName, a.ServiceName),
 		})
 	}
 
