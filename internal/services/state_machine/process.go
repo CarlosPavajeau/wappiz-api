@@ -775,8 +775,9 @@ func (s *service) handleCancelFlow(ctx context.Context, msg IncomingMessage, cus
 	var rows []whatsapp.ListRow
 	for _, a := range appt {
 		rows = append(rows, whatsapp.ListRow{
-			ID:    "cancel_" + a.ID.String(),
-			Title: a.StartsAt.Format("02/01 03:04 PM"),
+			ID:          "cancel_" + a.ID.String(),
+			Title:       date_formatter.FormatTime(a.StartsAt, "02/01 03:04 PM"),
+			Description: a.ResourceName,
 		})
 	}
 
@@ -849,7 +850,7 @@ func (s *service) handleCancelConfirm(ctx context.Context, msg IncomingMessage, 
 			"📅 %s\n\n"+
 			"Esta acción no se puede deshacer.",
 		svc.Name, rsc.Name,
-		appointment.StartsAt.Format("02/01/2006 03:04 PM"),
+		date_formatter.FormatTime(appointment.StartsAt, "02/01/2006 03:04 PM"),
 	)
 	buttons := []whatsapp.Button{
 		{Type: "reply", Reply: whatsapp.ButtonReply{ID: "confirm_cancel_" + appointmentID.String(), Title: "✅ Sí, cancelar"}},
@@ -1028,7 +1029,7 @@ func (s *service) sendConfirmation(ctx context.Context, msg IncomingMessage, ses
 		svc.Name,
 		svc.DurationMinutes,
 		rsc.Name,
-		sessionData.StartsAt.Format("02/01/2006 03:04 PM"),
+		date_formatter.FormatTime(*sessionData.StartsAt, "02/01/2006 03:04 PM"),
 		svc.Price,
 	)
 
@@ -1075,7 +1076,7 @@ func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMess
 		customerName,
 		svc.Name,
 		rsc.Name,
-		appt.StartsAt.Format("02/01/2006 03:04 PM"),
+		date_formatter.FormatTime(appt.StartsAt, "02/01/2006 03:04 PM"),
 	)
 
 	return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body)
