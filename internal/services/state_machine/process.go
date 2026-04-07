@@ -117,7 +117,7 @@ func (s *service) Process(ctx context.Context, msg IncomingMessage) error {
 	}
 }
 
-func (s *service) handleEntry(ctx context.Context, msg IncomingMessage, customer db.Customer) error {
+func (s *service) handleEntry(ctx context.Context, msg IncomingMessage, customer db.FindCustomerByPhoneNumberRow) error {
 	if msg.InteractiveID != nil {
 		interactiveID := *msg.InteractiveID
 
@@ -327,7 +327,7 @@ func (s *service) updateSession(ctx context.Context, session db.ConversationSess
 	return session, nil
 }
 
-func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.Customer) error {
+func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
 	var sessionData SessionData
 	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
 		logger.Error("[scheduling] failed to marshal session data on select resource step",
@@ -512,7 +512,7 @@ func (s *service) validateAndFindSlots(ctx context.Context, input, timezone stri
 	return &DateValidationResult{StartsAt: t, SlotTaken: true, Slots: allSuggestions}, nil
 }
 
-func (s *service) handleSelectTime(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.Customer) error {
+func (s *service) handleSelectTime(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
 	interactiveID := msg.InteractiveID
 	if interactiveID == nil {
 		return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
@@ -536,7 +536,7 @@ func (s *service) handleSelectTime(ctx context.Context, msg IncomingMessage, ses
 	return s.advanceToConfirmOrName(ctx, msg, session, sessionData, customer)
 }
 
-func (s *service) handleAwaitingName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.Customer) error {
+func (s *service) handleAwaitingName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
 	name := strings.TrimSpace(msg.Body)
 	if len(name) < 2 {
 		return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
@@ -569,7 +569,7 @@ func (s *service) handleAwaitingName(ctx context.Context, msg IncomingMessage, s
 	return s.sendConfirmation(ctx, msg, session)
 }
 
-func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.Customer) error {
+func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
 	interactiveID := msg.InteractiveID
 	if interactiveID == nil {
 		return s.sendConfirmation(ctx, msg, session)
@@ -696,7 +696,7 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 	return s.sendConfirmation(ctx, msg, session)
 }
 
-func (s *service) handleMyAppointments(ctx context.Context, msg IncomingMessage, customer db.Customer) error {
+func (s *service) handleMyAppointments(ctx context.Context, msg IncomingMessage, customer db.FindCustomerByPhoneNumberRow) error {
 	appt, err := db.Query.FindAppointmentsByCustomerID(ctx, s.db.Primary(), db.FindAppointmentsByCustomerIDParams{
 		TenantID:   msg.TenantID,
 		CustomerID: customer.ID,
@@ -757,7 +757,7 @@ func appointmentStatusLabel(status string) string {
 	}
 }
 
-func (s *service) handleCancelFlow(ctx context.Context, msg IncomingMessage, customer db.Customer) error {
+func (s *service) handleCancelFlow(ctx context.Context, msg IncomingMessage, customer db.FindCustomerByPhoneNumberRow) error {
 	appt, err := db.Query.FindAppointmentsByCustomerID(ctx, s.db.Primary(), db.FindAppointmentsByCustomerIDParams{
 		TenantID:   msg.TenantID,
 		CustomerID: customer.ID,
@@ -791,7 +791,7 @@ func (s *service) handleCancelFlow(ctx context.Context, msg IncomingMessage, cus
 		"¿Cuál cita deseas cancelar? 🗓️", sections)
 }
 
-func (s *service) handleCancelConfirm(ctx context.Context, msg IncomingMessage, customer db.Customer) error {
+func (s *service) handleCancelConfirm(ctx context.Context, msg IncomingMessage, customer db.FindCustomerByPhoneNumberRow) error {
 	appointmentID, err := uuid.Parse(strings.TrimPrefix(*msg.InteractiveID, "cancel_"))
 	if err != nil {
 		logger.Warn("[scheduling] failed to parse interactive id from cancel confirmation",
@@ -859,7 +859,7 @@ func (s *service) handleCancelConfirm(ctx context.Context, msg IncomingMessage, 
 	return s.whatsapp.SendButtons(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body, buttons)
 }
 
-func (s *service) handleCancelExecute(ctx context.Context, msg IncomingMessage, customer db.Customer) error {
+func (s *service) handleCancelExecute(ctx context.Context, msg IncomingMessage, customer db.FindCustomerByPhoneNumberRow) error {
 	appointmentID, err := uuid.Parse(strings.TrimPrefix(*msg.InteractiveID, "cancel_"))
 	if err != nil {
 		logger.Warn("[scheduling] failed to parse interactive id from cancel confirmation",
@@ -1041,7 +1041,7 @@ func (s *service) sendConfirmation(ctx context.Context, msg IncomingMessage, ses
 	return s.whatsapp.SendButtons(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body, buttons)
 }
 
-func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMessage, appointmentID uuid.UUID, session db.ConversationSession, customer db.Customer) error {
+func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMessage, appointmentID uuid.UUID, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
 	appt, err := db.Query.FindAppointmentByID(ctx, s.db.Primary(), db.FindAppointmentByIDParams{
 		ID:       appointmentID,
 		TenantID: msg.TenantID,
@@ -1081,7 +1081,7 @@ func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMess
 	return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body)
 }
 
-func (s *service) advanceToConfirmOrName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, sessionData SessionData, customer db.Customer) error {
+func (s *service) advanceToConfirmOrName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, sessionData SessionData, customer db.FindCustomerByPhoneNumberRow) error {
 	var err error
 	if customer.Name.Valid {
 		sessionData.ConfirmedName = new(customer.Name.String)
