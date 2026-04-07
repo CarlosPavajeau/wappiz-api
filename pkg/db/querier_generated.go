@@ -48,22 +48,18 @@ type Querier interface {
 	CompleteOnboardingProgress(ctx context.Context, db DBTX, tenantID uuid.UUID) error
 	//CountCustomerLateCancels
 	//
-	//  SELECT COUNT(*) as late_cancels
-	//  FROM appointments
-	//  WHERE status = 'cancelled'
-	//    AND tenant_id = $1
-	//    AND customer_id = $2
-	//    AND cancelled_at IS NOT NULL
-	//    AND EXTRACT(EPOCH FROM (starts_at - cancelled_at)) / 3600 < $3::int
-	CountCustomerLateCancels(ctx context.Context, db DBTX, arg CountCustomerLateCancelsParams) (int64, error)
+	//  SELECT late_cancel_count AS late_cancels
+	//  FROM customers
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	CountCustomerLateCancels(ctx context.Context, db DBTX, arg CountCustomerLateCancelsParams) (int32, error)
 	//CountCustomerNoShows
 	//
-	//  SELECT COUNT(*) as no_shows
-	//  FROM appointments
-	//  WHERE tenant_id = $1
-	//    AND customer_id = $2
-	//    AND status = 'no_show'
-	CountCustomerNoShows(ctx context.Context, db DBTX, arg CountCustomerNoShowsParams) (int64, error)
+	//  SELECT no_show_count AS no_shows
+	//  FROM customers
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	CountCustomerNoShows(ctx context.Context, db DBTX, arg CountCustomerNoShowsParams) (int32, error)
 	//DeleteConversationSession
 	//
 	//  DELETE
@@ -533,6 +529,18 @@ type Querier interface {
 	//      (reminder_1h_sent_at IS NULL AND starts_at BETWEEN NOW() + INTERVAL '50 minutes' AND NOW() + INTERVAL '70 minutes')
 	//      )
 	FindUpcomingAppointments(ctx context.Context, db DBTX) ([]FindUpcomingAppointmentsRow, error)
+	//IncrementCustomerLateCancels
+	//
+	//  UPDATE customers
+	//  SET late_cancel_count = late_cancel_count + 1
+	//  WHERE id = $1 AND tenant_id = $2
+	IncrementCustomerLateCancels(ctx context.Context, db DBTX, arg IncrementCustomerLateCancelsParams) error
+	//IncrementCustomerNoShows
+	//
+	//  UPDATE customers
+	//  SET no_show_count = no_show_count + 1
+	//  WHERE id = $1 AND tenant_id = $2
+	IncrementCustomerNoShows(ctx context.Context, db DBTX, arg IncrementCustomerNoShowsParams) error
 	//InsertAppointment
 	//
 	//  INSERT INTO appointments(

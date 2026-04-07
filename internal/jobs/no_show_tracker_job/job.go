@@ -84,6 +84,15 @@ func (j *job) process(ctx context.Context) error {
 			continue
 		}
 
+		if err := db.Query.IncrementCustomerNoShows(ctx, j.db.Primary(), db.IncrementCustomerNoShowsParams{
+			ID:       a.CustomerID,
+			TenantID: a.TenantID,
+		}); err != nil {
+			logger.Warn("[no_show_tracker] failed to increment customer no shows",
+				"err", err)
+			continue
+		}
+
 		affected[a.CustomerID] = a.TenantID
 	}
 
@@ -132,6 +141,15 @@ func (j *job) process(ctx context.Context) error {
 			continue // not a late cancellation
 		}
 
+		if err := db.Query.IncrementCustomerLateCancels(ctx, j.db.Primary(), db.IncrementCustomerLateCancelsParams{
+			ID:       a.CustomerID,
+			TenantID: a.TenantID,
+		}); err != nil {
+			logger.Warn("[no_show_tracker] failed to increment customer late cancels",
+				"err", err)
+			continue
+		}
+
 		j.evaluateCustomer(ctx, a.TenantID, a.CustomerID)
 		processed[a.CustomerID] = true
 	}
@@ -168,8 +186,8 @@ func (j *job) evaluateCustomer(ctx context.Context, tenantID, customerID uuid.UU
 	}
 
 	noShows, err := db.Query.CountCustomerNoShows(ctx, j.db.Primary(), db.CountCustomerNoShowsParams{
-		TenantID:   tenantID,
-		CustomerID: customerID,
+		TenantID: tenantID,
+		ID:       customerID,
 	})
 
 	if err != nil {
@@ -179,8 +197,8 @@ func (j *job) evaluateCustomer(ctx context.Context, tenantID, customerID uuid.UU
 	}
 
 	lateCancels, err := db.Query.CountCustomerLateCancels(ctx, j.db.Primary(), db.CountCustomerLateCancelsParams{
-		TenantID:   tenantID,
-		CustomerID: customerID,
+		TenantID: tenantID,
+		ID:       customerID,
 	})
 	if err != nil {
 		logger.Warn("[no_show_tracker] failed to count customer late cancels",
@@ -225,7 +243,7 @@ func (j *job) evaluateCustomer(ctx context.Context, tenantID, customerID uuid.UU
 	phoneNumberID := waConfig.PhoneNumberID.String
 	accessToken, _ := crypto.Decrypt(waConfig.AccessToken.String, j.encryptionKey)
 
-	if totalEvents >= int64(autoBlockThreshold) {
+	if totalEvents >= int32(autoBlockThreshold) {
 		if err := db.Query.BlockCustomer(ctx, j.db.Primary(), db.BlockCustomerParams{
 			ID:       customerID,
 			TenantID: tenantID,
@@ -245,8 +263,8 @@ func (j *job) evaluateCustomer(ctx context.Context, tenantID, customerID uuid.UU
 					"err", err)
 			}
 		}
-	} else if totalEvents == int64(warningThreshold) && tenantSettings.SendWarningBeforeBlock {
-		remaining := int64(autoBlockThreshold) - totalEvents
+	} else if totalEvents == int32(warningThreshold) && tenantSettings.SendWarningBeforeBlock {
+		remaining := int32(autoBlockThreshold) - totalEvents
 		customerMsg := buildCustomerWarningMessage(tenant.Name, remaining)
 
 		if err := j.whatsapp.SendText(ctx, customer.PhoneNumber, phoneNumberID, accessToken, customerMsg); err != nil {
@@ -264,7 +282,7 @@ func buildCustomerBlockMessage(tenantName string) string {
 	)
 }
 
-func buildCustomerWarningMessage(tenantName string, remaining int64) string {
+func buildCustomerWarningMessage(tenantName string, remaining int32) string {
 	return fmt.Sprintf(
 		"Hola, hemos registrado ausencias en tus citas con *%s*. Por favor recuerda cancelar con anticipación. %d ausencia(s) más podría suspender tu acceso.",
 		tenantName, remaining,
