@@ -93,8 +93,9 @@ func Run(ctx context.Context, cfg Config) error {
 	})
 
 	reminderJob := reminder_job.New(reminder_job.Config{
-		DB:       database,
-		Whatsapp: waSvc,
+		DB:            database,
+		Whatsapp:      waSvc,
+		EncryptionKey: encKey,
 	})
 
 	nowShowTrackerJob := no_show_tracker_job.New(no_show_tracker_job.Config{
