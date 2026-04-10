@@ -4,6 +4,7 @@ package integrationtest
 
 import (
 	"context"
+	"os"
 	"testing"
 	"wappiz/pkg/db"
 )
@@ -11,8 +12,8 @@ import (
 func RequireDatabase(t *testing.T) db.Database {
 	t.Helper()
 
-	dsn := t.Getenv("DATABASE_URL")
-	if dsn == "" {
+	dsn, ok := os.LookupEnv("DATABASE_URL")
+	if !ok || dsn == "" {
 		t.Skip("DATABASE_URL is required for integration tests")
 	}
 
