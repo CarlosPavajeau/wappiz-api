@@ -533,7 +533,6 @@ type Querier interface {
 	//         updated_at
 	//  FROM tenant_whatsapp_configs
 	//  WHERE tenant_id = $1
-	//    AND is_active = true
 	//  LIMIT 1
 	FindTenantWhatsappConfig(ctx context.Context, db DBTX, tenantID uuid.UUID) (FindTenantWhatsappConfigRow, error)
 	//FindTenantWhatsappConfigByPhoneNumberID

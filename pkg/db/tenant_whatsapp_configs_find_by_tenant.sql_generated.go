@@ -28,7 +28,6 @@ SELECT id,
        updated_at
 FROM tenant_whatsapp_configs
 WHERE tenant_id = $1
-  AND is_active = true
 LIMIT 1
 `
 
@@ -63,7 +62,6 @@ type FindTenantWhatsappConfigRow struct {
 //	       updated_at
 //	FROM tenant_whatsapp_configs
 //	WHERE tenant_id = $1
-//	  AND is_active = true
 //	LIMIT 1
 func (q *Queries) FindTenantWhatsappConfig(ctx context.Context, db DBTX, tenantID uuid.UUID) (FindTenantWhatsappConfigRow, error) {
 	row := db.QueryRowContext(ctx, findTenantWhatsappConfig, tenantID)

@@ -13,5 +13,4 @@ SELECT id,
        updated_at
 FROM tenant_whatsapp_configs
 WHERE tenant_id = $1
-  AND is_active = true
 LIMIT 1;
