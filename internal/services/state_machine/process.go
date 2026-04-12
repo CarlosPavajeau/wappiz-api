@@ -609,6 +609,17 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 		endsAt := startsAt.Add(time.Duration(svc.DurationMinutes) * time.Minute)
 		appointmentID := uuid.New()
 
+		hasCustomerOverlap, err := s.hasCustomerOverlap(ctx, tenant.ID, session.CustomerID, startsAt, endsAt)
+		if err != nil {
+			return fmt.Errorf("check customer overlap: %w", err)
+		}
+		if hasCustomerOverlap {
+			logger.Warn("[scheduling] customer overlap detected on confirm, informing customer",
+				"session_id", session.ID,
+				"customer_id", session.CustomerID)
+			return s.handleOverlapOnConfirm(ctx, msg, session, sessionData, svc)
+		}
+
 		if err := db.Query.InsertAppointment(ctx, s.db.Primary(), db.InsertAppointmentParams{
 			ID:             appointmentID,
 			TenantID:       tenant.ID,
@@ -619,35 +630,12 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 			EndsAt:         endsAt,
 			PriceAtBooking: svc.Price,
 		}); err != nil {
-			if strings.Contains(err.Error(), "no_overlap") || strings.Contains(err.Error(), "exclusion constraint") {
+			// The DB exclusion constraints are the authoritative source for overlap checks.
+			if isAppointmentOverlapConstraintError(err) {
 				logger.Warn("[scheduling] appointment overlap detected on confirm, informing customer",
-					"session_id", session.ID)
-
-				suggestions, err := s.slotFinder.GetSuggestedSlots(ctx, slot_finder.GetSuggestedSlotsParams{
-					ResourceID: *sessionData.ResourceID,
-					From:       *sessionData.StartsAt,
-					Service: slot_finder.ServiceParam{
-						DurationMinutes: svc.DurationMinutes,
-						BufferMinutes:   svc.BufferMinutes,
-					},
-				})
-
-				if err != nil {
-					return err
-				}
-
-				session.Step = string(StepSelectTime)
-
-				if _, err = s.updateSession(ctx, session, sessionData); err != nil {
-					return fmt.Errorf("update session: %w", err)
-				}
-
-				errMsg := buildErrorMessage(apperrors.ErrOverlap, "", suggestions)
-				if err := s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, errMsg); err != nil {
-					return err
-				}
-
-				return s.sendSlotList(ctx, msg, suggestions)
+					"session_id", session.ID,
+					"err", err)
+				return s.handleOverlapOnConfirm(ctx, msg, session, sessionData, svc)
 			}
 			return fmt.Errorf("insert appointment: %w", err)
 		}
@@ -703,6 +691,85 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 	}
 
 	return s.sendConfirmation(ctx, msg, session)
+}
+
+func (s *service) handleOverlapOnConfirm(
+	ctx context.Context,
+	msg IncomingMessage,
+	session db.ConversationSession,
+	sessionData SessionData,
+	svc db.Service,
+) error {
+	suggestions, err := s.slotFinder.GetSuggestedSlots(ctx, slot_finder.GetSuggestedSlotsParams{
+		ResourceID: *sessionData.ResourceID,
+		From:       *sessionData.StartsAt,
+		Service: slot_finder.ServiceParam{
+			DurationMinutes: svc.DurationMinutes,
+			BufferMinutes:   svc.BufferMinutes,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	filteredSuggestions := make([]slot_finder.TimeSlot, 0, len(suggestions))
+	for _, slot := range suggestions {
+		hasOverlap, err := s.hasCustomerOverlap(ctx, session.TenantID, session.CustomerID, slot.StartsAt, slot.EndsAt)
+		if err != nil {
+			return fmt.Errorf("check suggested slot customer overlap: %w", err)
+		}
+		if !hasOverlap {
+			filteredSuggestions = append(filteredSuggestions, slot)
+		}
+	}
+
+	errMsg := buildErrorMessage(apperrors.ErrOverlap, "", filteredSuggestions)
+	if err := s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, errMsg); err != nil {
+		return err
+	}
+
+	if len(filteredSuggestions) == 0 {
+		session.Step = string(StepSelectDate)
+		if _, err = s.updateSession(ctx, session, sessionData); err != nil {
+			return fmt.Errorf("update session: %w", err)
+		}
+		return nil
+	}
+
+	session.Step = string(StepSelectTime)
+	if _, err = s.updateSession(ctx, session, sessionData); err != nil {
+		return fmt.Errorf("update session: %w", err)
+	}
+
+	return s.sendSlotList(ctx, msg, filteredSuggestions)
+}
+
+func (s *service) hasCustomerOverlap(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	customerID uuid.UUID,
+	startsAt time.Time,
+	endsAt time.Time,
+) (bool, error) {
+	return db.Query.HasCustomerOverlap(ctx, s.db.Primary(), db.HasCustomerOverlapParams{
+		TenantID:   tenantID,
+		CustomerID: customerID,
+		StartsAt:   startsAt,
+		EndsAt:     endsAt,
+	})
+}
+
+func isAppointmentOverlapConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := err.Error()
+
+	// Handle both legacy resource overlap and customer overlap constraints.
+	return strings.Contains(msg, "no_overlap") ||
+		strings.Contains(msg, "no_customer_overlap") ||
+		strings.Contains(msg, "exclusion constraint")
 }
 
 func (s *service) handleMyAppointments(ctx context.Context, msg IncomingMessage, customer db.FindCustomerByPhoneNumberRow) error {

@@ -590,6 +590,18 @@ type Querier interface {
 	//      (reminder_1h_sent_at IS NULL AND starts_at BETWEEN NOW() + INTERVAL '50 minutes' AND NOW() + INTERVAL '70 minutes')
 	//      )
 	FindUpcomingAppointments(ctx context.Context, db DBTX) ([]FindUpcomingAppointmentsRow, error)
+	//HasCustomerOverlap
+	//
+	//  SELECT EXISTS (
+	//      SELECT 1
+	//      FROM appointments a
+	//      WHERE a.tenant_id = $1
+	//        AND a.customer_id = $2
+	//        AND a.status NOT IN ('cancelled', 'no_show')
+	//    AND a.starts_at < $3
+	//    AND a.ends_at > $4
+	//  ) AS has_overlap
+	HasCustomerOverlap(ctx context.Context, db DBTX, arg HasCustomerOverlapParams) (bool, error)
 	//IncrementCustomerLateCancels
 	//
 	//  UPDATE customers
