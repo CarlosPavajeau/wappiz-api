@@ -712,21 +712,32 @@ func (s *service) handleOverlapOnConfirm(
 		return err
 	}
 
+	filteredSuggestions := make([]slot_finder.TimeSlot, 0, len(suggestions))
+	for _, slot := range suggestions {
+		hasOverlap, err := s.hasCustomerOverlap(ctx, session.TenantID, session.CustomerID, slot.StartsAt, slot.EndsAt)
+		if err != nil {
+			return fmt.Errorf("check suggested slot customer overlap: %w", err)
+		}
+		if !hasOverlap {
+			filteredSuggestions = append(filteredSuggestions, slot)
+		}
+	}
+
+	errMsg := buildErrorMessage(apperrors.ErrOverlap, "", filteredSuggestions)
+	if err := s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, errMsg); err != nil {
+		return err
+	}
+
+	if len(filteredSuggestions) == 0 {
+		return nil
+	}
+
 	session.Step = string(StepSelectTime)
 	if _, err = s.updateSession(ctx, session, sessionData); err != nil {
 		return fmt.Errorf("update session: %w", err)
 	}
 
-	errMsg := buildErrorMessage(apperrors.ErrOverlap, "", suggestions)
-	if err := s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, errMsg); err != nil {
-		return err
-	}
-
-	if len(suggestions) == 0 {
-		return nil
-	}
-
-	return s.sendSlotList(ctx, msg, suggestions)
+	return s.sendSlotList(ctx, msg, filteredSuggestions)
 }
 
 func (s *service) hasCustomerOverlap(
