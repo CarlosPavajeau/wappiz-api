@@ -4,6 +4,8 @@ import (
 	"errors"
 )
 
+var errNilService = errors.New("crypto service is nil")
+
 // Service holds the application AES key and exposes encrypt/decrypt without
 // passing the key at every call site.
 type Service struct {
@@ -23,10 +25,18 @@ func NewService(key []byte) (*Service, error) {
 
 // Encrypt encrypts plaintext using the service key. See [Encrypt].
 func (s *Service) Encrypt(plaintext string) (string, error) {
+	if s == nil {
+		return "", errNilService
+	}
+
 	return Encrypt(plaintext, s.key)
 }
 
 // Decrypt decrypts encoded using the service key. See [Decrypt].
 func (s *Service) Decrypt(encoded string) (string, error) {
+	if s == nil {
+		return "", errNilService
+	}
+
 	return Decrypt(encoded, s.key)
 }
