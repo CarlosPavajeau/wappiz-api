@@ -722,6 +722,10 @@ func (s *service) handleOverlapOnConfirm(
 		return err
 	}
 
+	if len(suggestions) == 0 {
+		return nil
+	}
+
 	return s.sendSlotList(ctx, msg, suggestions)
 }
 
