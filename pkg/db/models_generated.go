@@ -270,6 +270,7 @@ type TenantWhatsappConfig struct {
 	ActivationRequestedAt  sql.NullTime             `db:"activation_requested_at"`
 	ActivationNotes        sql.NullString           `db:"activation_notes"`
 	ActivationContactEmail sql.NullString           `db:"activation_contact_email"`
+	RejectReason           sql.NullString           `db:"reject_reason"`
 }
 
 type User struct {

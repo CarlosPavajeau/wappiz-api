@@ -6,6 +6,7 @@ import (
 	"wappiz/svc/api/middleware"
 	"wappiz/svc/api/routes/v1/admin_activate_tenant"
 	"wappiz/svc/api/routes/v1/admin_find_pending_activations"
+	"wappiz/svc/api/routes/v1/admin_reject_tenant"
 	"wappiz/svc/api/routes/v1/appointments_get_status_history"
 	"wappiz/svc/api/routes/v1/appointments_search"
 	"wappiz/svc/api/routes/v1/appointments_update_status"
@@ -131,6 +132,7 @@ func Register(g *gin.Engine, svc *Services) {
 		Mailer: svc.Mailer,
 		Crypto: svc.Crypto,
 	})
+	RegisterRoute(admin, &admin_reject_tenant.Handler{DB: svc.Database, Mailer: svc.Mailer})
 
 	// webhooks
 	RegisterRoute(g, &webhooks_verify_webhook.Handler{})

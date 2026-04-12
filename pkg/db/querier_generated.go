@@ -935,6 +935,14 @@ type Querier interface {
 	//    AND starts_at <= NOW() - INTERVAL '30 minutes'
 	//  RETURNING id, tenant_id, customer_id
 	MarkUnattendedAppointmentsNoShow(ctx context.Context, db DBTX) ([]MarkUnattendedAppointmentsNoShowRow, error)
+	//RejectTenantActivation
+	//
+	//  UPDATE tenant_whatsapp_configs
+	//  SET reject_reason     = $1,
+	//      activation_status = 'failed',
+	//      updated_at        = NOW()
+	//  WHERE tenant_id = $2
+	RejectTenantActivation(ctx context.Context, db DBTX, arg RejectTenantActivationParams) error
 	//SearchAppointments
 	//
 	//  SELECT a.id,

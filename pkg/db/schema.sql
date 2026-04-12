@@ -61,7 +61,8 @@ CREATE TABLE tenant_whatsapp_configs
     activation_status        whatsapp_activation_status default 'pending'::whatsapp_activation_status NOT NULL,
     activation_requested_at  timestamp with time zone,
     activation_notes         text,
-    activation_contact_email text
+    activation_contact_email text,
+    reject_reason            text
 );
 
 CREATE TYPE appointment_status AS ENUM (
@@ -104,7 +105,7 @@ CREATE TABLE appointments
         EXCLUDE USING gist (resource_id with =, tstzrange(starts_at, ends_at) with &&),
     CONSTRAINT no_customer_overlap
         EXCLUDE USING gist (tenant_id with =, customer_id with =, tstzrange(starts_at, ends_at) with &&)
-            WHERE (status <> ALL (ARRAY ['cancelled'::appointment_status, 'no_show'::appointment_status]))
+        WHERE (status <> ALL (ARRAY ['cancelled'::appointment_status, 'no_show'::appointment_status]))
 );
 
 CREATE TABLE appointment_status_history
@@ -304,7 +305,7 @@ CREATE INDEX idx_appointments_status_date
 CREATE INDEX idx_appointments_cancelled_recent
     ON appointments (cancelled_at DESC)
     WHERE status = 'cancelled'::appointment_status
-      AND cancelled_at IS NOT NULL;
+        AND cancelled_at IS NOT NULL;
 CREATE INDEX idx_appointments_unattended
     ON appointments (starts_at)
     WHERE status = 'confirmed'::appointment_status;
