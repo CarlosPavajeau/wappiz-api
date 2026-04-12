@@ -83,10 +83,10 @@ func (h *Handler) Handle(c *gin.Context) {
 	}
 
 	if err := db.Query.ActivateTenantWhatsappConfig(ctx, tx, db.ActivateTenantWhatsappConfigParams{
-		WabaID:             sql.NullString{String: req.WABAID},
-		PhoneNumberID:      sql.NullString{String: req.PhoneNumberID},
-		DisplayPhoneNumber: sql.NullString{String: req.DisplayPhoneNumber},
-		AccessToken:        sql.NullString{String: accessToken},
+		WabaID:             sql.NullString{String: req.WABAID, Valid: req.WABAID != ""},
+		PhoneNumberID:      sql.NullString{String: req.PhoneNumberID, Valid: req.PhoneNumberID != ""},
+		DisplayPhoneNumber: sql.NullString{String: req.DisplayPhoneNumber, Valid: req.DisplayPhoneNumber != ""},
+		AccessToken:        sql.NullString{String: accessToken, Valid: accessToken != ""},
 		TenantID:           tenantID,
 	}); err != nil {
 		logger.Warn("[admin] activate whatsapp config", "tenant_id", tenantID, "err", err)
