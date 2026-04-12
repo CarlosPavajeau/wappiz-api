@@ -669,7 +669,7 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 				"err", err)
 		}
 
-		return s.sendAppointmentConfirmed(ctx, msg, appointmentID, session, customer)
+		return s.sendAppointmentConfirmed(ctx, msg, appointmentID, customer)
 
 	case "confirm_modify":
 		if err := db.Query.DeleteConversationSession(ctx, s.db.Primary(), session.ID); err != nil {
@@ -1150,7 +1150,7 @@ func (s *service) sendConfirmation(ctx context.Context, msg IncomingMessage, ses
 	return s.whatsapp.SendButtons(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken, body, buttons)
 }
 
-func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMessage, appointmentID uuid.UUID, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
+func (s *service) sendAppointmentConfirmed(ctx context.Context, msg IncomingMessage, appointmentID uuid.UUID, customer db.FindCustomerByPhoneNumberRow) error {
 	appt, err := db.Query.FindAppointmentByID(ctx, s.db.Primary(), db.FindAppointmentByIDParams{
 		ID:       appointmentID,
 		TenantID: msg.TenantID,
