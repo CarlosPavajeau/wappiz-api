@@ -105,6 +105,22 @@ func (ns NullWhatsappActivationStatus) Value() (driver.Value, error) {
 	return string(ns.WhatsappActivationStatus), nil
 }
 
+type Account struct {
+	AccessToken           sql.NullString `db:"access_token"`
+	AccessTokenExpiresAt  sql.NullTime   `db:"access_token_expires_at"`
+	AccountID             string         `db:"account_id"`
+	CreatedAt             time.Time      `db:"created_at"`
+	ID                    string         `db:"id"`
+	IDToken               sql.NullString `db:"id_token"`
+	Password              sql.NullString `db:"password"`
+	ProviderID            string         `db:"provider_id"`
+	RefreshToken          sql.NullString `db:"refresh_token"`
+	RefreshTokenExpiresAt sql.NullTime   `db:"refresh_token_expires_at"`
+	Scope                 sql.NullString `db:"scope"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	UserID                string         `db:"user_id"`
+}
+
 type Appointment struct {
 	ID                uuid.UUID         `db:"id"`
 	TenantID          uuid.UUID         `db:"tenant_id"`
@@ -183,6 +199,14 @@ type Customer struct {
 	LateCancelCount int32          `db:"late_cancel_count"`
 }
 
+type Jwk struct {
+	CreatedAt  time.Time    `db:"created_at"`
+	ExpiresAt  sql.NullTime `db:"expires_at"`
+	ID         string       `db:"id"`
+	PrivateKey string       `db:"private_key"`
+	PublicKey  string       `db:"public_key"`
+}
+
 type OnboardingProgress struct {
 	ID          uuid.UUID    `db:"id"`
 	TenantID    uuid.UUID    `db:"tenant_id"`
@@ -232,6 +256,18 @@ type Service struct {
 	CreatedAt       time.Time      `db:"created_at"`
 }
 
+type Session struct {
+	CreatedAt      time.Time      `db:"created_at"`
+	ExpiresAt      time.Time      `db:"expires_at"`
+	ID             string         `db:"id"`
+	ImpersonatedBy sql.NullString `db:"impersonated_by"`
+	IpAddress      sql.NullString `db:"ip_address"`
+	Token          string         `db:"token"`
+	UpdatedAt      time.Time      `db:"updated_at"`
+	UserAgent      sql.NullString `db:"user_agent"`
+	UserID         string         `db:"user_id"`
+}
+
 type Tenant struct {
 	ID                    uuid.UUID    `db:"id"`
 	Name                  string       `db:"name"`
@@ -274,17 +310,26 @@ type TenantWhatsappConfig struct {
 }
 
 type User struct {
+	BanExpires    sql.NullTime   `db:"ban_expires"`
+	BanReason     sql.NullString `db:"ban_reason"`
+	Banned        sql.NullBool   `db:"banned"`
 	CreatedAt     time.Time      `db:"created_at"`
 	Email         string         `db:"email"`
 	EmailVerified bool           `db:"email_verified"`
 	ID            string         `db:"id"`
 	Image         sql.NullString `db:"image"`
 	Name          string         `db:"name"`
-	UpdatedAt     time.Time      `db:"updated_at"`
-	BanExpires    sql.NullTime   `db:"ban_expires"`
-	BanReason     sql.NullString `db:"ban_reason"`
-	Banned        sql.NullBool   `db:"banned"`
 	Role          sql.NullString `db:"role"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+}
+
+type Verification struct {
+	CreatedAt  time.Time `db:"created_at"`
+	ExpiresAt  time.Time `db:"expires_at"`
+	ID         string    `db:"id"`
+	Identifier string    `db:"identifier"`
+	UpdatedAt  time.Time `db:"updated_at"`
+	Value      string    `db:"value"`
 }
 
 type WorkingHour struct {
