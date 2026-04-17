@@ -20,6 +20,7 @@ import (
 	"wappiz/pkg/otel"
 	"wappiz/pkg/runner"
 	"wappiz/pkg/whatsapp"
+	"wappiz/svc/api/middleware"
 	"wappiz/svc/api/routes"
 
 	"github.com/gin-gonic/gin"
@@ -108,6 +109,7 @@ func Run(ctx context.Context, cfg Config) error {
 	g.Use(gin.Recovery())
 	g.Use(requestIDMiddleware())
 	g.Use(logMiddleware())
+	g.Use(middleware.ObservabilityMiddleware())
 
 	routes.Register(g, &routes.Services{
 		Database:     database,
