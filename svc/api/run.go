@@ -20,12 +20,12 @@ import (
 	"wappiz/pkg/otel"
 	"wappiz/pkg/runner"
 	"wappiz/pkg/whatsapp"
-	"wappiz/svc/api/middleware"
 	"wappiz/svc/api/routes"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/prometheus/common/version"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // nolint:gocognit
@@ -109,7 +109,7 @@ func Run(ctx context.Context, cfg Config) error {
 	g.Use(gin.Recovery())
 	g.Use(requestIDMiddleware())
 	g.Use(logMiddleware())
-	g.Use(middleware.ObservabilityMiddleware())
+	g.Use(otelgin.Middleware("api"))
 
 	routes.Register(g, &routes.Services{
 		Database:     database,
