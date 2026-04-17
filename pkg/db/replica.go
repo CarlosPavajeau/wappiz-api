@@ -18,7 +18,8 @@ const (
 // Replica wraps a standard SQL database connection and implements the gen.DBTX interface
 // to enable interaction with the generated database code.
 type Replica struct {
-	db *sql.DB // Underlying database connection
+	db   *sql.DB
+	name string
 }
 
 // Ensure Replica implements the gen.DBTX interface
@@ -44,8 +45,8 @@ func (r *Replica) ExecContext(ctx context.Context, query string, args ...any) (s
 		status = statusError
 	}
 
-	metrics.DatabaseOperationsLatency.WithLabelValues("exec", status).Observe(duration)
-	metrics.DatabaseOperationsTotal.WithLabelValues("exec", status).Inc()
+	metrics.DatabaseOperationsLatency.WithLabelValues(r.name, "exec", status).Observe(duration)
+	metrics.DatabaseOperationsTotal.WithLabelValues(r.name, "exec", status).Inc()
 
 	tracing.RecordErrorUnless(span, err, sql.ErrNoRows)
 
@@ -71,8 +72,8 @@ func (r *Replica) PrepareContext(ctx context.Context, query string) (*sql.Stmt, 
 		status = statusError
 	}
 
-	metrics.DatabaseOperationsLatency.WithLabelValues("prepare", status).Observe(duration)
-	metrics.DatabaseOperationsTotal.WithLabelValues("prepare", status).Inc()
+	metrics.DatabaseOperationsLatency.WithLabelValues(r.name, "prepare", status).Observe(duration)
+	metrics.DatabaseOperationsTotal.WithLabelValues(r.name, "prepare", status).Inc()
 
 	tracing.RecordErrorUnless(span, err, sql.ErrNoRows)
 
@@ -98,8 +99,8 @@ func (r *Replica) QueryContext(ctx context.Context, query string, args ...any) (
 		status = statusError
 	}
 
-	metrics.DatabaseOperationsLatency.WithLabelValues("query", status).Observe(duration)
-	metrics.DatabaseOperationsTotal.WithLabelValues("query", status).Inc()
+	metrics.DatabaseOperationsLatency.WithLabelValues(r.name, "query", status).Observe(duration)
+	metrics.DatabaseOperationsTotal.WithLabelValues(r.name, "query", status).Inc()
 
 	tracing.RecordErrorUnless(span, err, sql.ErrNoRows)
 
@@ -123,8 +124,8 @@ func (r *Replica) QueryRowContext(ctx context.Context, query string, args ...any
 	// QueryRowContext doesn't return an error, but we can still track timing
 	status := statusSuccess
 
-	metrics.DatabaseOperationsLatency.WithLabelValues("query_row", status).Observe(duration)
-	metrics.DatabaseOperationsTotal.WithLabelValues("query_row", status).Inc()
+	metrics.DatabaseOperationsLatency.WithLabelValues(r.name, "query_row", status).Observe(duration)
+	metrics.DatabaseOperationsTotal.WithLabelValues(r.name, "query_row", status).Inc()
 
 	return row
 }
@@ -146,8 +147,8 @@ func (r *Replica) Begin(ctx context.Context) (DBTx, error) {
 		status = statusError
 	}
 
-	metrics.DatabaseOperationsLatency.WithLabelValues("begin", status).Observe(duration)
-	metrics.DatabaseOperationsTotal.WithLabelValues("begin", status).Inc()
+	metrics.DatabaseOperationsLatency.WithLabelValues(r.name, "begin", status).Observe(duration)
+	metrics.DatabaseOperationsTotal.WithLabelValues(r.name, "begin", status).Inc()
 
 	tracing.RecordErrorUnless(span, err, sql.ErrNoRows)
 

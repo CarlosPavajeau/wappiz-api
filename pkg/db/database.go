@@ -55,7 +55,8 @@ func New(config Config) (*database, error) {
 	}
 
 	primaryReplica := &Replica{
-		db: primary,
+		db:   primary,
+		name: "primary",
 	}
 
 	return &database{
