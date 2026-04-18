@@ -247,6 +247,14 @@ type Querier interface {
 	//  WHERE tenant_id = $1
 	//  ORDER BY created_at DESC
 	FindCustomersByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Customer, error)
+	//FindJWKByID
+	//
+	//  SELECT id, public_key
+	//  FROM jwks
+	//  WHERE id = $1
+	//    AND (expires_at IS NULL OR expires_at > NOW())
+	//  LIMIT 1
+	FindJWKByID(ctx context.Context, db DBTX, id string) (FindJWKByIDRow, error)
 	//FindOnboardingProgressByTenant
 	//
 	//  SELECT id, tenant_id, current_step, completed_at, created_at, updated_at

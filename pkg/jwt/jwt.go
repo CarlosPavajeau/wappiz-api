@@ -10,12 +10,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
+	"wappiz/pkg/db"
 	"wappiz/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -26,11 +25,6 @@ import (
 const (
 	// AccessTokenDuration is kept for callers that reference it externally.
 	AccessTokenDuration = 15 * time.Minute
-
-	jwksCacheTTL     = 15 * time.Minute
-	jwksFetchTimeout = 10 * time.Second
-	jwksMaxBodyBytes = 64 * 1024 // 64 KB — prevent memory exhaustion
-	minForceRefresh  = 5 * time.Second
 )
 
 // Claims holds the JWT payload expected from the external auth service.
@@ -46,31 +40,7 @@ type Claims struct {
 // tenant_id context value. Set it via InitTenantFinder at startup.
 type TenantIDLookup func(ctx context.Context, userID string) (uuid.UUID, error)
 
-// ─── JWKS verifier ───────────────────────────────────────────────────────────
-
-// Verifier fetches and caches public keys from a JWKS endpoint, then uses them
-// to validate JWTs. It is safe for concurrent use.
-type Verifier struct {
-	jwksURL    string
-	issuer     string // optional; empty = skip iss validation
-	httpClient *http.Client
-
-	fetchMu   sync.Mutex   // serialises HTTP fetches
-	cacheMu   sync.RWMutex // protects cache and fetchedAt
-	cache     map[string]any
-	fetchedAt time.Time
-}
-
-// NewVerifier creates a Verifier backed by the given JWKS URL.
-// When issuer is non-empty, the "iss" JWT claim must match it.
-func NewVerifier(jwksURL, issuer string) *Verifier {
-	return &Verifier{
-		jwksURL:    jwksURL,
-		issuer:     issuer,
-		httpClient: &http.Client{Timeout: jwksFetchTimeout},
-		cache:      make(map[string]any),
-	}
-}
+// ─── JWKS key parsing ────────────────────────────────────────────────────────
 
 // jwkEntry is the wire representation of a single JSON Web Key.
 type jwkEntry struct {
@@ -86,211 +56,6 @@ type jwkEntry struct {
 	X   string `json:"x"`
 	Y   string `json:"y"` // not present in OKP
 }
-
-type jwksResponse struct {
-	Keys []jwkEntry `json:"keys"`
-}
-
-// doHTTPFetch performs the actual JWKS HTTP request and replaces the cache.
-// Caller must hold fetchMu.
-func (v *Verifier) doHTTPFetch() error {
-	resp, err := v.httpClient.Get(v.jwksURL)
-	if err != nil {
-		return fmt.Errorf("fetch jwks: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("jwks endpoint returned HTTP %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, jwksMaxBodyBytes))
-	if err != nil {
-		return fmt.Errorf("read jwks body: %w", err)
-	}
-
-	var set jwksResponse
-	if err := json.Unmarshal(body, &set); err != nil {
-		return fmt.Errorf("parse jwks: %w", err)
-	}
-
-	next := make(map[string]any, len(set.Keys))
-	for _, k := range set.Keys {
-		if k.Kid == "" {
-			logger.Info("[jwt] skipping JWKS entry with empty kid",
-				"kty", k.Kty,
-				"alg", k.Alg)
-			continue
-		}
-		if k.Use != "" && k.Use != "sig" {
-			logger.Info("[jwt] skipping JWKS key (not a signing key)",
-				"kid", k.Kid,
-				"use", k.Use)
-			continue // skip non-signing keys (e.g. encryption keys)
-		}
-		pub, err := parseJWK(k)
-		if err != nil {
-			logger.Info("[jwt] skipping malformed JWKS key",
-				"kid", k.Kid,
-				"kty", k.Kty,
-				"err", err)
-			continue // skip malformed keys; don't fail the whole set
-		}
-		next[k.Kid] = pub
-	}
-
-	logger.Info("[jwt] JWKS refreshed",
-		"keys", len(next),
-		"url", v.jwksURL)
-
-	v.cacheMu.Lock()
-	v.cache = next
-	v.fetchedAt = time.Now()
-	v.cacheMu.Unlock()
-
-	return nil
-}
-
-// refresh fetches new JWKS keys, serialised by fetchMu.
-//
-// When force is false (TTL expiry), a double-check prevents redundant fetches
-// when multiple goroutines race to refresh a stale cache.
-//
-// When force is true (unknown kid), the double-check is replaced by a
-// rate-limit (minForceRefresh) to prevent DoS through fabricated kid values.
-func (v *Verifier) refresh(force bool) error {
-	v.fetchMu.Lock()
-	defer v.fetchMu.Unlock()
-
-	v.cacheMu.RLock()
-	age := time.Since(v.fetchedAt)
-	v.cacheMu.RUnlock()
-
-	if force {
-		if age < minForceRefresh {
-			return nil // rate-limit forced refreshes
-		}
-	} else {
-		if age < jwksCacheTTL {
-			return nil // another goroutine already refreshed
-		}
-	}
-
-	return v.doHTTPFetch()
-}
-
-// lookupKey returns the cached public key for the given kid.
-// It refreshes the cache on TTL expiry or when the kid is absent.
-func (v *Verifier) lookupKey(kid string) (any, error) {
-	v.cacheMu.RLock()
-	key, ok := v.cache[kid]
-	fresh := time.Since(v.fetchedAt) < jwksCacheTTL
-	v.cacheMu.RUnlock()
-
-	if ok && fresh {
-		return key, nil // fast path: cache hit with fresh data
-	}
-
-	// Slow path: stale cache (force=false) or unknown kid in fresh cache (force=true).
-	forceRefresh := !ok && fresh
-	if err := v.refresh(forceRefresh); err != nil {
-		return nil, fmt.Errorf("jwks refresh: %w", err)
-	}
-
-	v.cacheMu.RLock()
-	key, ok = v.cache[kid]
-	v.cacheMu.RUnlock()
-
-	if !ok {
-		v.cacheMu.RLock()
-		cachedKids := make([]string, 0, len(v.cache))
-		for k := range v.cache {
-			cachedKids = append(cachedKids, k)
-		}
-		v.cacheMu.RUnlock()
-		logger.Info("[jwt] signing key not found in JWKS after refresh",
-			"kid", kid,
-			"kids", strings.Join(cachedKids, ","))
-		return nil, fmt.Errorf("signing key %q not found in JWKS", kid)
-	}
-	return key, nil
-}
-
-// VerifyToken validates the JWT string and returns its claims.
-func (v *Verifier) VerifyToken(tokenStr string) (*Claims, error) {
-	kid, alg, err := extractTokenHeader(tokenStr)
-	if err != nil {
-		logger.Info("[jwt] malformed token header",
-			"err", err)
-		return nil, errors.New("malformed token")
-	}
-
-	logger.Info("[jwt] verifying token",
-		"kid", kid,
-		"alg", alg)
-
-	// Enforce algorithm allowlist before touching any key material.
-	// This prevents algorithm confusion attacks (e.g. RS256 → HS256, alg:none).
-	if !isAllowedAlg(alg) {
-		logger.Warn("[jwt] rejected: algorithm not in allowlist",
-			"alg", alg)
-		return nil, fmt.Errorf("algorithm %q is not permitted", alg)
-	}
-
-	key, err := v.lookupKey(kid)
-	if err != nil {
-		logger.Warn("[jwt] key lookup failed",
-			"kid", kid,
-			"err", err)
-		return nil, err
-	}
-
-	opts := []gojwt.ParserOption{
-		gojwt.WithLeeway(10 * time.Second), // tolerate small clock skew
-	}
-	if v.issuer != "" {
-		opts = append(opts, gojwt.WithIssuer(v.issuer))
-		logger.Info("[jwt] issuer validation enabled",
-			"iss", v.issuer)
-	}
-
-	token, err := gojwt.ParseWithClaims(tokenStr, &Claims{},
-		func(t *gojwt.Token) (any, error) {
-			// Re-confirm the algorithm after full header parsing.
-			switch t.Method.(type) {
-			case *gojwt.SigningMethodRSA, *gojwt.SigningMethodECDSA, *gojwt.SigningMethodEd25519:
-				return key, nil
-			default:
-				logger.Warn("[jwt] rejected: unexpected signing method",
-					"method", fmt.Sprintf("%T", t.Method))
-				return nil, errors.New("unexpected signing method")
-			}
-		},
-		opts...,
-	)
-	if err != nil {
-		logger.Warn("[jwt] ParseWithClaims failed",
-			"kid", kid,
-			"alg", alg,
-			"err", err)
-		return nil, err
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		logger.Warn("[jwt] token parsed but claims are invalid",
-			"ok", ok,
-			"valid", token.Valid)
-		return nil, errors.New("invalid token")
-	}
-
-	logger.Info("[jwt] token valid",
-		"user_id", claims.UserID,
-		"role", claims.Role)
-	return claims, nil
-}
-
-// ─── JWKS key parsing ────────────────────────────────────────────────────────
 
 func parseJWK(k jwkEntry) (any, error) {
 	switch k.Kty {
@@ -413,7 +178,7 @@ func isAllowedAlg(alg string) bool {
 
 // ─── Package-level initialisation ────────────────────────────────────────────
 
-var defaultVerifier *Verifier
+var defaultVerifier *DBVerifier
 var defaultTenantFinder TenantIDLookup
 
 // InitTenantFinder registers the function used by AuthMiddleware to resolve
@@ -423,23 +188,16 @@ func InitTenantFinder(f TenantIDLookup) {
 	defaultTenantFinder = f
 }
 
-// Init initialises the package-level JWKS verifier.
+// Init initialises the package-level DB-backed JWT verifier.
 // It must be called once at application startup, before any requests are served.
-// The initial JWKS fetch is performed eagerly so the service fails fast if the
-// authentication endpoint is unreachable.
-func Init(jwksURL, issuer string) error {
-	v := NewVerifier(jwksURL, issuer)
-	if err := v.refresh(true); err != nil {
-		return fmt.Errorf("initial jwks fetch failed: %w", err)
-	}
-	defaultVerifier = v
-	return nil
+func Init(dbtx db.DBTX, issuer string) {
+	defaultVerifier = NewDBVerifier(dbtx, issuer)
 }
 
 // ─── Gin middleware ───────────────────────────────────────────────────────────
 
-// AuthMiddleware is a Gin middleware that validates Bearer JWTs issued by the
-// external authentication service. Init must be called before routes are served.
+// AuthMiddleware is a Gin middleware that validates Bearer JWTs using public keys
+// stored in the database jwks table. Init must be called before routes are served.
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if defaultVerifier == nil {
@@ -458,7 +216,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := defaultVerifier.VerifyToken(header[7:])
+		claims, err := defaultVerifier.VerifyToken(c.Request.Context(), header[7:])
 		if err != nil {
 			if errors.Is(err, gojwt.ErrTokenExpired) {
 				logger.Warn("[jwt] token expired",

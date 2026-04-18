@@ -102,13 +102,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 
-	// Initialise the JWKS verifier before any request is served.
-	// This performs an eager fetch so the service fails fast if the external
-	// authentication endpoint is unreachable.
-	if err := jwt.Init(cfg.JWKSEndpoint, cfg.JWTIssuer); err != nil {
-		logger.Error("failed to initialise JWT verifier: %v", err)
-		return err
-	}
+	jwt.Init(database.Primary(), cfg.JWTIssuer)
 
 	jwt.InitTenantFinder(func(ctx context.Context, userID string) (uuid.UUID, error) {
 		tenant, err := db.Query.FindTenantByUserId(ctx, database.Primary(), userID)

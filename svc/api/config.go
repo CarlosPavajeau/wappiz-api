@@ -75,8 +75,6 @@ type Config struct {
 	ResendAPIKey string
 	// ResendFromEmail is the sender address used for outgoing emails (RESEND_FROM_EMAIL).
 	ResendFromEmail string
-	// JWKSEndpoint is the URL of the JSON Web Key Set used to verify JWT signatures (JWKS_ENDPOINT).
-	JWKSEndpoint string
 	// JWTIssuer is the expected "iss" claim value for incoming JWTs (JWT_ISSUER).
 	// Optional — when empty the issuer claim is not validated.
 	JWTIssuer     string
@@ -130,8 +128,7 @@ func LoadConfiguration() Config {
 		AdminEmail:         mustGet("ADMIN_EMAIL"),
 		ResendAPIKey:       mustGet("RESEND_API_KEY"),
 		ResendFromEmail:    mustGet("RESEND_FROM_EMAIL"),
-		JWKSEndpoint:       mustGet("JWKS_ENDPOINT"),
-		JWTIssuer:          os.Getenv("JWT_ISSUER"), // optional
+		JWTIssuer: os.Getenv("JWT_ISSUER"), // optional
 		Observability: Observability{
 			Tracing: &TracingConfig{
 				SampleRate: sampleRate,
