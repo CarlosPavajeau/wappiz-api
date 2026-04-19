@@ -246,7 +246,7 @@ type Querier interface {
 	//  FROM customers
 	//  WHERE tenant_id = $1
 	//  ORDER BY created_at DESC
-	FindCustomersByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Customer, error)
+	FindCustomersByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]FindCustomersByTenantRow, error)
 	//FindJWKByID
 	//
 	//  SELECT id, public_key

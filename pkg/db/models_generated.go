@@ -193,6 +193,10 @@ type Customer struct {
 	TenantID        uuid.UUID      `db:"tenant_id"`
 	PhoneNumber     string         `db:"phone_number"`
 	Name            sql.NullString `db:"name"`
+	DocumentId      sql.NullString `db:"documentId"`
+	BirthDate       sql.NullTime   `db:"birth_date"`
+	Email           sql.NullString `db:"email"`
+	Address         sql.NullString `db:"address"`
 	IsBlocked       bool           `db:"is_blocked"`
 	CreatedAt       time.Time      `db:"created_at"`
 	NoShowCount     int32          `db:"no_show_count"`

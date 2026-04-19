@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -25,6 +27,17 @@ WHERE tenant_id = $1
 ORDER BY created_at DESC
 `
 
+type FindCustomersByTenantRow struct {
+	ID              uuid.UUID      `db:"id"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
+	PhoneNumber     string         `db:"phone_number"`
+	Name            sql.NullString `db:"name"`
+	IsBlocked       bool           `db:"is_blocked"`
+	CreatedAt       time.Time      `db:"created_at"`
+	NoShowCount     int32          `db:"no_show_count"`
+	LateCancelCount int32          `db:"late_cancel_count"`
+}
+
 // FindCustomersByTenant
 //
 //	SELECT id,
@@ -38,15 +51,15 @@ ORDER BY created_at DESC
 //	FROM customers
 //	WHERE tenant_id = $1
 //	ORDER BY created_at DESC
-func (q *Queries) FindCustomersByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Customer, error) {
+func (q *Queries) FindCustomersByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]FindCustomersByTenantRow, error) {
 	rows, err := db.QueryContext(ctx, findCustomersByTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Customer
+	var items []FindCustomersByTenantRow
 	for rows.Next() {
-		var i Customer
+		var i FindCustomersByTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

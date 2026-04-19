@@ -26,7 +26,7 @@ type Handler struct {
 func (h *Handler) Method() string { return http.MethodGet }
 func (h *Handler) Path() string   { return "/v1/customers" }
 
-func toResponse(c db.Customer) Response {
+func toResponse(c db.FindCustomersByTenantRow) Response {
 	var name *string
 	if c.Name.Valid {
 		name = &c.Name.String
