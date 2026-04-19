@@ -288,6 +288,18 @@ type Tenant struct {
 	UpdatedAt             time.Time    `db:"updated_at"`
 }
 
+type TenantFlowField struct {
+	ID         uuid.UUID      `db:"id"`
+	TenantID   uuid.UUID      `db:"tenant_id"`
+	FieldKey   sql.NullString `db:"field_key"`
+	FieldType  sql.NullString `db:"field_type"`
+	Question   sql.NullString `db:"question"`
+	IsRequired bool           `db:"is_required"`
+	IsEnabled  bool           `db:"is_enabled"`
+	SortOrder  int32          `db:"sort_order"`
+	CreatedAt  time.Time      `db:"created_at"`
+}
+
 type TenantUser struct {
 	UserID   string    `db:"user_id"`
 	TenantID uuid.UUID `db:"tenant_id"`
