@@ -1,8 +1,12 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
+	"time"
+	"wappiz/internal/services/ratelimit"
 	"wappiz/pkg/jwt"
+	"wappiz/pkg/logger"
 	"wappiz/svc/api/middleware"
 	"wappiz/svc/api/routes/v1/admin_activate_tenant"
 	"wappiz/svc/api/routes/v1/admin_find_pending_activations"
@@ -70,7 +74,40 @@ func Register(g *gin.Engine, svc *Services) {
 		AllowCredentials: false,
 	}))
 
-	auth := g.Group("/", jwt.AuthMiddleware())
+	// Ratelimit middleware
+	rate := func(c *gin.Context) {
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		resp, err := svc.Ratelimit.Ratelimit(c.Request.Context(), ratelimit.RatelimitRequest{
+			Name:       "api-requests-per-user",
+			Identifier: userID.(string),
+			Limit:      100,
+			Duration:   time.Minute,
+			Cost:       1,
+		})
+
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			logger.Warn("[api] rate limit check failed",
+				"error", err)
+			return
+		}
+
+		if !resp.Success {
+			c.Header("X-Rate-Limit-Limit", fmt.Sprintf("%d", resp.Limit))
+			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%d", resp.Reset.Unix()))
+			c.AbortWithStatus(http.StatusTooManyRequests)
+			return
+		}
+
+		c.Next()
+	}
+
+	auth := g.Group("/", jwt.AuthMiddleware(), rate)
 
 	// ---------------------------------------------------------------------------
 	// v1/tenants

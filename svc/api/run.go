@@ -11,8 +11,11 @@ import (
 	"wappiz/internal/jobs/cleanup_sessions_job"
 	"wappiz/internal/jobs/no_show_tracker_job"
 	"wappiz/internal/jobs/reminder_job"
+	"wappiz/internal/services/ratelimit"
 	"wappiz/internal/services/slot_finder"
 	"wappiz/internal/services/state_machine"
+	"wappiz/pkg/clock"
+	"wappiz/pkg/counter"
 	"wappiz/pkg/crypto"
 	"wappiz/pkg/db"
 	"wappiz/pkg/jwt"
@@ -38,6 +41,8 @@ func Run(ctx context.Context, cfg Config) error {
 			SampleRate:    cfg.Observability.Logging.SampleRate,
 		})
 	}
+
+	clk := clock.New()
 
 	var err error
 	var shutdownGrafana func(context.Context) error
@@ -127,6 +132,18 @@ func Run(ctx context.Context, cfg Config) error {
 		SlotFinder: slotFinder,
 	})
 
+	ctr := counter.NewMemoryCounter(clk)
+	rlSvc, err := ratelimit.New(ratelimit.Config{
+		Clock:   clk,
+		Counter: ctr,
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to create ratelimit service: %w", err)
+	}
+
+	r.Defer(rlSvc.Close)
+
 	g := gin.New()
 
 	g.Use(gin.Recovery())
@@ -143,6 +160,7 @@ func Run(ctx context.Context, cfg Config) error {
 		AdminEmail:   cfg.AdminEmail,
 		AppSecret:    cfg.WhatsappAppSecret,
 		Crypto:       cryptoSvc,
+		Ratelimit:    rlSvc,
 	})
 
 	reminderJob := reminder_job.New(reminder_job.Config{
