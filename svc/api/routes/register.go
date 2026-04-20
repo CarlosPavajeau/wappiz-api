@@ -78,7 +78,7 @@ func Register(g *gin.Engine, svc *Services) {
 	rate := func(c *gin.Context) {
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.Status(http.StatusUnauthorized)
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
@@ -90,7 +90,7 @@ func Register(g *gin.Engine, svc *Services) {
 		})
 
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			logger.Warn("[api] rate limit check failed",
 				"error", err)
 			return
@@ -99,7 +99,7 @@ func Register(g *gin.Engine, svc *Services) {
 		if !resp.Success {
 			c.Header("X-Rate-Limit-Limit", fmt.Sprintf("%d", resp.Limit))
 			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%d", resp.Reset.Unix()))
-			c.String(http.StatusTooManyRequests, "Too many requests")
+			c.AbortWithStatus(http.StatusTooManyRequests)
 			return
 		}
 
