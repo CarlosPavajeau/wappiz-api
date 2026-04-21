@@ -3,6 +3,7 @@ package webhook_processor
 import (
 	"context"
 	"database/sql"
+	"sync"
 	"time"
 	"wappiz/internal/services/state_machine"
 	"wappiz/pkg/buffer"
@@ -29,6 +30,7 @@ type service struct {
 	stateMachine state_machine.StateMachineService
 	crypto       *crypto.Service
 	msgBuffer    *buffer.Buffer[Request]
+	wg           sync.WaitGroup
 }
 
 func New(cfg Config) Service {
@@ -42,6 +44,7 @@ func New(cfg Config) Service {
 			Drop:     true,
 		}),
 	}
+	s.wg.Add(cfg.Workers)
 	for range cfg.Workers {
 		go s.worker()
 	}
@@ -54,10 +57,12 @@ func (s *service) Enqueue(req Request) {
 
 func (s *service) Close() error {
 	s.msgBuffer.Close()
+	s.wg.Wait()
 	return nil
 }
 
 func (s *service) worker() {
+	defer s.wg.Done()
 	for req := range s.msgBuffer.Consume() {
 		s.processPayload(req)
 	}
