@@ -14,6 +14,7 @@ import (
 	"wappiz/internal/services/ratelimit"
 	"wappiz/internal/services/slot_finder"
 	"wappiz/internal/services/state_machine"
+	"wappiz/internal/services/webhook_processor"
 	"wappiz/pkg/clock"
 	"wappiz/pkg/counter"
 	"wappiz/pkg/crypto"
@@ -144,6 +145,15 @@ func Run(ctx context.Context, cfg Config) error {
 
 	r.Defer(rlSvc.Close)
 
+	webhookProcessorSvc := webhook_processor.New(webhook_processor.Config{
+		DB:           database,
+		StateMachine: stateMachineSvc,
+		Crypto:       cryptoSvc,
+		Workers:      cfg.Webhook.Workers,
+		BufferCap:    cfg.Webhook.BufferCap,
+	})
+	r.Defer(webhookProcessorSvc.Close)
+
 	g := gin.New()
 
 	g.Use(gin.Recovery())
@@ -152,15 +162,15 @@ func Run(ctx context.Context, cfg Config) error {
 	g.Use(otelgin.Middleware("api"))
 
 	routes.Register(g, &routes.Services{
-		Database:     database,
-		Mailer:       mailerSvc,
-		Whatsapp:     waSvc,
-		StateMachine: stateMachineSvc,
-		Runner:       r,
-		AdminEmail:   cfg.AdminEmail,
-		AppSecret:    cfg.WhatsappAppSecret,
-		Crypto:       cryptoSvc,
-		Ratelimit:    rlSvc,
+		Database:         database,
+		Mailer:           mailerSvc,
+		Whatsapp:         waSvc,
+		StateMachine:     stateMachineSvc,
+		WebhookProcessor: webhookProcessorSvc,
+		AdminEmail:       cfg.AdminEmail,
+		AppSecret:        cfg.WhatsappAppSecret,
+		Crypto:           cryptoSvc,
+		Ratelimit:        rlSvc,
 	})
 
 	reminderJob := reminder_job.New(reminder_job.Config{
