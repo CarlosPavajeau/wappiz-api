@@ -892,6 +892,29 @@ type Querier interface {
 	//      $8
 	//  )
 	InsertTenant(ctx context.Context, db DBTX, arg InsertTenantParams) error
+	//InsertTenantFlowField
+	//
+	//  INSERT INTO tenant_flow_fields (
+	//      id,
+	//      tenant_id,
+	//      field_key,
+	//      field_type,
+	//      question,
+	//      is_required,
+	//      is_enabled,
+	//      sort_order
+	//  )
+	//  VALUES (
+	//      $1,
+	//      $2,
+	//      $3,
+	//      $4,
+	//      $5,
+	//      $6,
+	//      $7,
+	//      $8
+	//  )
+	InsertTenantFlowField(ctx context.Context, db DBTX, arg InsertTenantFlowFieldParams) error
 	//InsertTenantWhatsappConfig
 	//
 	//  INSERT INTO tenant_whatsapp_configs(
@@ -999,6 +1022,13 @@ type Querier interface {
 	//    AND a.status = ANY ($6)
 	//  ORDER BY a.starts_at
 	SearchAppointments(ctx context.Context, db DBTX, arg SearchAppointmentsParams) ([]SearchAppointmentsRow, error)
+	//ToggleFlowField
+	//
+	//  UPDATE tenant_flow_fields
+	//  SET is_enabled = NOT is_enabled
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	ToggleFlowField(ctx context.Context, db DBTX, arg ToggleFlowFieldParams) error
 	//UnblockCustomer
 	//
 	//  UPDATE customers
@@ -1036,6 +1066,15 @@ type Querier interface {
 	//  SET name = $1
 	//  WHERE id = $2
 	UpdateCustomer(ctx context.Context, db DBTX, arg UpdateCustomerParams) error
+	//UpdateFlowField
+	//
+	//  UPDATE tenant_flow_fields
+	//  SET question    = $3,
+	//      is_required = $4,
+	//      sort_order  = $5
+	//  WHERE id = $1
+	//    AND tenant_id = $2
+	UpdateFlowField(ctx context.Context, db DBTX, arg UpdateFlowFieldParams) error
 	//UpdateResource
 	//
 	//  UPDATE resources
