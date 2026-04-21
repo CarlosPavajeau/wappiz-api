@@ -1,6 +1,7 @@
 package tenants_create
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -38,67 +39,64 @@ func (h *Handler) Handle(c *gin.Context) {
 
 	userID := c.MustGet("user_id").(string)
 	base := slugify(req.Name)
-	tenantID := uuid.New()
 
-	txx, err := h.DB.Primary().Begin(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	tenantID, err := db.TxWithResult(c.Request.Context(), h.DB.Primary(), func(ctx context.Context, txx db.DBTX) (uuid.UUID, error) {
+		var err error
+		tenantID := uuid.New()
 
-	defer txx.Rollback()
+		for attempt := range slugMaxRetries {
+			slug := base
+			if attempt > 0 {
+				slug = fmt.Sprintf("%s-%s", base, randomSuffix(5))
+			}
 
-	for attempt := range slugMaxRetries {
-		slug := base
-		if attempt > 0 {
-			slug = fmt.Sprintf("%s-%s", base, randomSuffix(5))
+			err = db.Query.InsertTenant(ctx, txx, db.InsertTenantParams{
+				ID:           tenantID,
+				Name:         req.Name,
+				Slug:         slug,
+				Timezone:     "America/Bogota",
+				Currency:     "COP",
+				Plan:         "free",
+				MonthResetAt: time.Time{},
+				Settings:     nil,
+			})
+
+			if err == nil {
+				break
+			}
 		}
 
-		err = db.Query.InsertTenant(c.Request.Context(), txx, db.InsertTenantParams{
-			ID:           tenantID,
-			Name:         req.Name,
-			Slug:         slug,
-			Timezone:     "America/Bogota",
-			Currency:     "COP",
-			Plan:         "free",
-			MonthResetAt: time.Time{},
-			Settings:     nil,
-		})
-
-		if err == nil {
-			break
+		if err != nil {
+			return uuid.Nil, err
 		}
-	}
+
+		if err := db.Query.LinkTenantUser(ctx, txx, db.LinkTenantUserParams{
+			TenantID: tenantID,
+			UserID:   userID,
+		}); err != nil {
+			return uuid.Nil, err
+		}
+
+		if err := db.Query.InsertOnboardingProgress(ctx, txx, db.InsertOnboardingProgressParams{
+			ID:          uuid.New(),
+			TenantID:    tenantID,
+			CurrentStep: int32(2),
+		}); err != nil {
+			return uuid.Nil, err
+		}
+
+		return tenantID, nil
+	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := db.Query.LinkTenantUser(c.Request.Context(), txx, db.LinkTenantUserParams{
-		TenantID: tenantID,
-		UserID:   userID,
-	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := db.Query.InsertOnboardingProgress(c.Request.Context(), txx, db.InsertOnboardingProgressParams{
-		ID:          uuid.New(),
-		TenantID:    tenantID,
-		CurrentStep: int32(2),
-	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	txx.Commit()
-
-	c.JSON(http.StatusCreated, gin.H{"tenant": userID})
+	c.JSON(http.StatusCreated, gin.H{"tenant_id": tenantID.String()})
 }
 
 const slugAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
-const slugConstraint = "tenants_slug_key"
 const slugMaxRetries = 5
 
 var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
