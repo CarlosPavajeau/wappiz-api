@@ -67,7 +67,6 @@ func (h *Handler) Handle(c *gin.Context) {
 				Slug:         slug,
 				Timezone:     "America/Bogota",
 				Currency:     "COP",
-				Plan:         "free",
 				MonthResetAt: time.Time{},
 				Settings:     nil,
 			})

@@ -16,7 +16,6 @@ type Response struct {
 	Slug     string            `json:"slug"`
 	TimeZone string            `json:"time_zone"`
 	Currency string            `json:"currency"`
-	Plan     string            `json:"plan"`
 	Settings db.TenantSettings `json:"settings"`
 }
 
@@ -52,7 +51,6 @@ func (h *Handler) Handle(c *gin.Context) {
 		Slug:     tenant.Slug,
 		TimeZone: tenant.Timezone,
 		Currency: tenant.Currency,
-		Plan:     tenant.Plan,
 		Settings: settings,
 	})
 }

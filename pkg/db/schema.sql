@@ -20,93 +20,93 @@ CREATE TABLE "accounts"
 
 CREATE TABLE "appointment_penalty_events"
 (
-    "id"             uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "appointment_id" uuid                                   NOT NULL,
-    "tenant_id"      uuid                                   NOT NULL,
+    "created_at"     timestamp with time zone DEFAULT now() NOT NULL,
     "customer_id"    uuid                                   NOT NULL,
     "event_type"     varchar(20)                            NOT NULL,
+    "id"             uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "occurred_at"    timestamp with time zone               NOT NULL,
-    "created_at"     timestamp with time zone DEFAULT now() NOT NULL,
+    "tenant_id"      uuid                                   NOT NULL,
     CONSTRAINT "appointment_penalty_events_unique" UNIQUE ("appointment_id", "event_type")
 );
 
 CREATE TABLE "appointment_reminder_events"
 (
-    "id"              uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "appointment_id"  uuid                                   NOT NULL,
-    "tenant_id"       uuid                                   NOT NULL,
-    "customer_id"     uuid                                   NOT NULL,
-    "reminder_type"   varchar(10)                            NOT NULL,
     "attempts"        integer                  DEFAULT 0     NOT NULL,
-    "sent_at"         timestamp with time zone,
+    "created_at"      timestamp with time zone DEFAULT now() NOT NULL,
+    "customer_id"     uuid                                   NOT NULL,
+    "id"              uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "last_attempt_at" timestamp with time zone,
     "last_error"      text,
-    "created_at"      timestamp with time zone DEFAULT now() NOT NULL,
+    "reminder_type"   varchar(10)                            NOT NULL,
+    "sent_at"         timestamp with time zone,
+    "tenant_id"       uuid                                   NOT NULL,
     CONSTRAINT "appointment_reminder_events_unique" UNIQUE ("appointment_id", "reminder_type")
 );
 
 CREATE TABLE "appointment_status_history"
 (
-    "id"              uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "appointment_id"  uuid                                   NOT NULL,
-    "from_status"     "appointment_status"                   NOT NULL,
-    "to_status"       "appointment_status"                   NOT NULL,
     "changed_by"      text,
     "changed_by_role" varchar(20),
+    "created_at"      timestamp with time zone DEFAULT now() NOT NULL,
+    "from_status"     "appointment_status"                   NOT NULL,
+    "id"              uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "reason"          varchar(500),
-    "created_at"      timestamp with time zone DEFAULT now() NOT NULL
+    "to_status"       "appointment_status"                   NOT NULL
 );
 
 CREATE TABLE "appointments"
 (
+    "cancel_reason"        varchar(500),
+    "cancelled_at"         timestamp with time zone,
+    "cancelled_by"         text,
+    "completed_at"         timestamp with time zone,
+    "created_at"           timestamp with time zone DEFAULT now()                           NOT NULL,
+    "customer_id"          uuid                                                             NOT NULL,
+    "ends_at"              timestamp with time zone                                         NOT NULL,
     "id"                   uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "tenant_id"            uuid                                                             NOT NULL,
+    "notes"                varchar(500),
+    "price_at_booking"     numeric(10, 2)                                                   NOT NULL,
+    "reminder_1h_sent_at"  timestamp with time zone,
+    "reminder_24h_sent_at" timestamp with time zone,
     "resource_id"          uuid                                                             NOT NULL,
     "service_id"           uuid                                                             NOT NULL,
-    "customer_id"          uuid                                                             NOT NULL,
     "starts_at"            timestamp with time zone                                         NOT NULL,
-    "ends_at"              timestamp with time zone                                         NOT NULL,
     "status"               "appointment_status"     DEFAULT 'pending'::"appointment_status" NOT NULL,
-    "cancelled_by"         text,
-    "cancel_reason"        varchar(500),
-    "price_at_booking"     numeric(10, 2)                                                   NOT NULL,
-    "reminder_24h_sent_at" timestamp with time zone,
-    "reminder_1h_sent_at"  timestamp with time zone,
-    "notes"                varchar(500),
-    "created_at"           timestamp with time zone DEFAULT now()                           NOT NULL,
-    "updated_at"           timestamp with time zone DEFAULT now()                           NOT NULL,
-    "cancelled_at"         timestamp with time zone,
-    "completed_at"         timestamp with time zone
+    "tenant_id"            uuid                                                             NOT NULL,
+    "updated_at"           timestamp with time zone DEFAULT now()                           NOT NULL
 );
 
 CREATE TABLE "conversation_sessions"
 (
-    "id"                 uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "tenant_id"          uuid                                   NOT NULL,
-    "whatsapp_config_id" uuid                                   NOT NULL,
+    "created_at"         timestamp with time zone DEFAULT now() NOT NULL,
     "customer_id"        uuid                                   NOT NULL,
-    "step"               varchar(50)                            NOT NULL,
     "data"               jsonb                    DEFAULT '{}'  NOT NULL,
     "expires_at"         timestamp with time zone               NOT NULL,
-    "created_at"         timestamp with time zone DEFAULT now() NOT NULL,
+    "id"                 uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
+    "step"               varchar(50)                            NOT NULL,
+    "tenant_id"          uuid                                   NOT NULL,
     "updated_at"         timestamp with time zone DEFAULT now() NOT NULL,
+    "whatsapp_config_id" uuid                                   NOT NULL,
     CONSTRAINT "conversation_sessions_tenant_id_client_id_key" UNIQUE ("tenant_id", "customer_id")
 );
 
 CREATE TABLE "customers"
 (
-    "id"                uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "tenant_id"         uuid                                   NOT NULL,
-    "phone_number"      varchar(20)                            NOT NULL,
-    "name"              varchar(255),
-    "documentId"        varchar(20),
-    "birth_date"        date,
-    "email"             varchar(255),
     "address"           varchar(255),
-    "is_blocked"        boolean                  DEFAULT false NOT NULL,
+    "birth_date"        date,
     "created_at"        timestamp with time zone DEFAULT now() NOT NULL,
-    "no_show_count"     integer                  DEFAULT 0     NOT NULL,
+    "documentId"        varchar(20),
+    "email"             varchar(255),
+    "id"                uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
+    "is_blocked"        boolean                  DEFAULT false NOT NULL,
     "late_cancel_count" integer                  DEFAULT 0     NOT NULL,
+    "name"              varchar(255),
+    "no_show_count"     integer                  DEFAULT 0     NOT NULL,
+    "phone_number"      varchar(20)                            NOT NULL,
+    "tenant_id"         uuid                                   NOT NULL,
     CONSTRAINT "clients_tenant_id_phone_number_key" UNIQUE ("tenant_id", "phone_number")
 );
 
@@ -121,12 +121,12 @@ CREATE TABLE "jwks"
 
 CREATE TABLE "onboarding_progress"
 (
+    "completed_at" timestamp with time zone,
+    "created_at"   timestamp with time zone DEFAULT now() NOT NULL,
+    "current_step" integer                  DEFAULT 1     NOT NULL,
     "id"           uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "tenant_id"    uuid                                   NOT NULL
         CONSTRAINT "onboarding_progress_tenant_id_key" UNIQUE,
-    "current_step" integer                  DEFAULT 1     NOT NULL,
-    "completed_at" timestamp with time zone,
-    "created_at"   timestamp with time zone DEFAULT now() NOT NULL,
     "updated_at"   timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -156,41 +156,41 @@ CREATE TABLE "resource_services"
 
 CREATE TABLE "resources"
 (
-    "id"         uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "tenant_id"  uuid                                      NOT NULL,
-    "name"       varchar(255)                              NOT NULL,
-    "type"       varchar(50)              DEFAULT 'barber' NOT NULL,
     "avatar_url" varchar(500),
+    "created_at" timestamp with time zone DEFAULT now()    NOT NULL,
+    "id"         uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "is_active"  boolean                  DEFAULT true     NOT NULL,
+    "name"       varchar(255)                              NOT NULL,
     "sort_order" integer                  DEFAULT 0        NOT NULL,
-    "created_at" timestamp with time zone DEFAULT now()    NOT NULL
+    "tenant_id"  uuid                                      NOT NULL,
+    "type"       varchar(50)              DEFAULT 'barber' NOT NULL
 );
 
 CREATE TABLE "schedule_overrides"
 (
-    "id"          uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "resource_id" uuid                                   NOT NULL,
-    "date"        date                                   NOT NULL,
-    "is_day_off"  boolean                  DEFAULT false NOT NULL,
-    "start_time"  time,
-    "end_time"    time,
-    "reason"      varchar(255),
     "created_at"  timestamp with time zone DEFAULT now() NOT NULL,
+    "date"        date                                   NOT NULL,
+    "end_time"    time,
+    "id"          uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
+    "is_day_off"  boolean                  DEFAULT false NOT NULL,
+    "reason"      varchar(255),
+    "resource_id" uuid                                   NOT NULL,
+    "start_time"  time,
     CONSTRAINT "uq_schedule_overrides_resource_date" UNIQUE ("resource_id", "date")
 );
 
 CREATE TABLE "services"
 (
-    "id"               uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "tenant_id"        uuid                                   NOT NULL,
-    "name"             varchar(255)                           NOT NULL,
+    "buffer_minutes"   integer                  DEFAULT 0     NOT NULL,
+    "created_at"       timestamp with time zone DEFAULT now() NOT NULL,
     "description"      varchar(500),
     "duration_minutes" integer                                NOT NULL,
-    "buffer_minutes"   integer                  DEFAULT 0     NOT NULL,
-    "price"            numeric(10, 2)                         NOT NULL,
+    "id"               uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "is_active"        boolean                  DEFAULT true  NOT NULL,
+    "name"             varchar(255)                           NOT NULL,
+    "price"            numeric(10, 2)                         NOT NULL,
     "sort_order"       integer                  DEFAULT 0     NOT NULL,
-    "created_at"       timestamp with time zone DEFAULT now() NOT NULL
+    "tenant_id"        uuid                                   NOT NULL
 );
 
 CREATE TABLE "sessions"
@@ -237,63 +237,61 @@ CREATE TABLE "subscriptions"
 
 CREATE TABLE "tenant_flow_fields"
 (
-    "id"          uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    "tenant_id"   uuid                                   NOT NULL,
+    "created_at"  timestamp with time zone DEFAULT now() NOT NULL,
     "field_key"   varchar(50)                            NOT NULL,
     "field_type"  "flow_field_type"                      NOT NULL,
-    "question"    text,
-    "is_required" boolean                  DEFAULT false NOT NULL,
+    "id"          uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
     "is_enabled"  boolean                  DEFAULT true  NOT NULL,
+    "is_required" boolean                  DEFAULT false NOT NULL,
+    "question"    text,
     "sort_order"  integer                                NOT NULL,
-    "created_at"  timestamp with time zone DEFAULT now() NOT NULL,
+    "tenant_id"   uuid                                   NOT NULL,
     CONSTRAINT "uq_tenant_field_key" UNIQUE ("tenant_id", "field_key")
 );
 
 CREATE TABLE "tenant_users"
 (
-    "user_id"   text,
-    "tenant_id" uuid,
     "role"      text NOT NULL,
+    "tenant_id" uuid,
+    "user_id"   text,
     CONSTRAINT "tenant_users_pkey" PRIMARY KEY ("user_id", "tenant_id")
 );
 
 CREATE TABLE "tenant_whatsapp_configs"
 (
+    "access_token"             text,
+    "activation_contact_email" text,
+    "activation_notes"         text,
+    "activation_requested_at"  timestamp with time zone,
+    "activation_status"        "whatsapp_activation_status" DEFAULT 'pending'::"whatsapp_activation_status" NOT NULL,
+    "created_at"               timestamp with time zone     DEFAULT now()                                   NOT NULL,
+    "display_phone_number"     varchar(20),
     "id"                       uuid PRIMARY KEY             DEFAULT gen_random_uuid(),
-    "tenant_id"                uuid                                                                         NOT NULL
-        CONSTRAINT "tenant_whatsapp_configs_tenant_id_key" UNIQUE,
-    "waba_id"                  varchar(100),
+    "is_active"                boolean                      DEFAULT false                                   NOT NULL,
     "phone_number_id"          varchar(100)
         CONSTRAINT "tenant_whatsapp_configs_phone_number_id_key" UNIQUE,
-    "display_phone_number"     varchar(20),
-    "access_token"             text,
+    "reject_reason"            text,
+    "tenant_id"                uuid                                                                         NOT NULL
+        CONSTRAINT "tenant_whatsapp_configs_tenant_id_key" UNIQUE,
     "token_expires_at"         timestamp with time zone,
-    "is_active"                boolean                      DEFAULT false                                   NOT NULL,
-    "verified_at"              timestamp with time zone,
-    "created_at"               timestamp with time zone     DEFAULT now()                                   NOT NULL,
     "updated_at"               timestamp with time zone     DEFAULT now()                                   NOT NULL,
-    "activation_status"        "whatsapp_activation_status" DEFAULT 'pending'::"whatsapp_activation_status" NOT NULL,
-    "activation_requested_at"  timestamp with time zone,
-    "activation_notes"         text,
-    "activation_contact_email" text,
-    "reject_reason"            text
+    "verified_at"              timestamp with time zone,
+    "waba_id"                  varchar(100)
 );
 
 CREATE TABLE "tenants"
 (
+    "appointments_this_month" integer                  DEFAULT 0                NOT NULL,
+    "created_at"              timestamp with time zone DEFAULT now()            NOT NULL,
+    "currency"                varchar(3)               DEFAULT 'COP'            NOT NULL,
     "id"                      uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
+    "is_active"               boolean                  DEFAULT true             NOT NULL,
+    "month_reset_at"          timestamp with time zone                          NOT NULL,
     "name"                    varchar(255)                                      NOT NULL,
+    "settings"                jsonb                    DEFAULT '{}',
     "slug"                    varchar(100)                                      NOT NULL
         CONSTRAINT "tenants_slug_key" UNIQUE,
     "timezone"                varchar(50)              DEFAULT 'America/Bogota' NOT NULL,
-    "currency"                varchar(3)               DEFAULT 'COP'            NOT NULL,
-    "plan"                    varchar(20)              DEFAULT 'free'           NOT NULL,
-    "plan_expires_at"         timestamp with time zone,
-    "appointments_this_month" integer                  DEFAULT 0                NOT NULL,
-    "month_reset_at"          timestamp with time zone                          NOT NULL,
-    "is_active"               boolean                  DEFAULT true             NOT NULL,
-    "settings"                jsonb                    DEFAULT '{}',
-    "created_at"              timestamp with time zone DEFAULT now()            NOT NULL,
     "updated_at"              timestamp with time zone DEFAULT now()            NOT NULL
 );
 
@@ -324,12 +322,12 @@ CREATE TABLE "verifications"
 
 CREATE TABLE "working_hours"
 (
-    "id"          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    "resource_id" uuid                          NOT NULL,
     "day_of_week" smallint                      NOT NULL,
-    "start_time"  time                          NOT NULL,
     "end_time"    time                          NOT NULL,
+    "id"          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     "is_active"   boolean          DEFAULT true NOT NULL,
+    "resource_id" uuid                          NOT NULL,
+    "start_time"  time                          NOT NULL,
     CONSTRAINT "uq_working_hours_resource_day" UNIQUE ("resource_id", "day_of_week"),
     CONSTRAINT "working_hours_day_of_week_check" CHECK (((day_of_week >= 0) AND (day_of_week <= 6)))
 );
@@ -361,33 +359,33 @@ ALTER TABLE "accounts"
 ALTER TABLE "appointment_penalty_events"
     ADD CONSTRAINT "appointment_penalty_events_appointment_id_appointments_id_fkey" FOREIGN KEY ("appointment_id") REFERENCES "appointments" ("id") ON DELETE CASCADE;
 ALTER TABLE "appointment_penalty_events"
-    ADD CONSTRAINT "appointment_penalty_events_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
-ALTER TABLE "appointment_penalty_events"
     ADD CONSTRAINT "appointment_penalty_events_customer_id_customers_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id") ON DELETE CASCADE;
+ALTER TABLE "appointment_penalty_events"
+    ADD CONSTRAINT "appointment_penalty_events_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
 ALTER TABLE "appointment_reminder_events"
     ADD CONSTRAINT "appointment_reminder_events_appointment_id_appointments_id_fkey" FOREIGN KEY ("appointment_id") REFERENCES "appointments" ("id") ON DELETE CASCADE;
 ALTER TABLE "appointment_reminder_events"
-    ADD CONSTRAINT "appointment_reminder_events_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
-ALTER TABLE "appointment_reminder_events"
     ADD CONSTRAINT "appointment_reminder_events_customer_id_customers_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id") ON DELETE CASCADE;
+ALTER TABLE "appointment_reminder_events"
+    ADD CONSTRAINT "appointment_reminder_events_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
 ALTER TABLE "appointment_status_history"
     ADD CONSTRAINT "appointment_status_history_appointment_id_appointments_id_fkey" FOREIGN KEY ("appointment_id") REFERENCES "appointments" ("id");
 ALTER TABLE "appointment_status_history"
     ADD CONSTRAINT "appointment_status_history_changed_by_users_id_fkey" FOREIGN KEY ("changed_by") REFERENCES "users" ("id");
 ALTER TABLE "appointments"
-    ADD CONSTRAINT "appointments_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id");
+    ADD CONSTRAINT "appointments_customer_id_customers_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id");
 ALTER TABLE "appointments"
     ADD CONSTRAINT "appointments_resource_id_resources_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "resources" ("id");
 ALTER TABLE "appointments"
     ADD CONSTRAINT "appointments_service_id_services_id_fkey" FOREIGN KEY ("service_id") REFERENCES "services" ("id");
 ALTER TABLE "appointments"
-    ADD CONSTRAINT "appointments_customer_id_customers_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id");
+    ADD CONSTRAINT "appointments_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id");
+ALTER TABLE "conversation_sessions"
+    ADD CONSTRAINT "conversation_sessions_customer_id_customers_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id");
 ALTER TABLE "conversation_sessions"
     ADD CONSTRAINT "conversation_sessions_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id");
 ALTER TABLE "conversation_sessions"
     ADD CONSTRAINT "conversation_sessions_58HeJZwRLG95_fkey" FOREIGN KEY ("whatsapp_config_id") REFERENCES "tenant_whatsapp_configs" ("id");
-ALTER TABLE "conversation_sessions"
-    ADD CONSTRAINT "conversation_sessions_customer_id_customers_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id");
 ALTER TABLE "customers"
     ADD CONSTRAINT "customers_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
 ALTER TABLE "onboarding_progress"
@@ -413,9 +411,9 @@ ALTER TABLE "subscriptions"
 ALTER TABLE "tenant_flow_fields"
     ADD CONSTRAINT "tenant_flow_fields_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
 ALTER TABLE "tenant_users"
-    ADD CONSTRAINT "tenant_users_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
-ALTER TABLE "tenant_users"
     ADD CONSTRAINT "tenant_users_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
+ALTER TABLE "tenant_users"
+    ADD CONSTRAINT "tenant_users_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
 ALTER TABLE "tenant_whatsapp_configs"
     ADD CONSTRAINT "tenant_whatsapp_configs_tenant_id_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE;
 ALTER TABLE "working_hours"

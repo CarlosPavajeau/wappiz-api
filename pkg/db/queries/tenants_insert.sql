@@ -5,7 +5,6 @@ INSERT INTO tenants(
     slug,
     timezone,
     currency,
-    plan,
     appointments_this_month,
     month_reset_at,
     is_active,
@@ -16,9 +15,8 @@ INSERT INTO tenants(
     $3,
     $4,
     $5,
-    $6,
     0,
-    $7,
+    $6,
     true,
-    $8
+    $7
 );
