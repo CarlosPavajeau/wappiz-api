@@ -265,7 +265,7 @@ type Querier interface {
 	//    AND customer_id = $2
 	//    AND expires_at > NOW()
 	//  LIMIT 1
-	FindCustomerActiveConversationSession(ctx context.Context, db DBTX, arg FindCustomerActiveConversationSessionParams) (ConversationSession, error)
+	FindCustomerActiveConversationSession(ctx context.Context, db DBTX, arg FindCustomerActiveConversationSessionParams) (FindCustomerActiveConversationSessionRow, error)
 	//FindCustomerByID
 	//
 	//  SELECT id, tenant_id, phone_number, name, is_blocked, created_at
@@ -317,7 +317,7 @@ type Querier interface {
 	//  FROM onboarding_progress
 	//  WHERE tenant_id = $1
 	//  LIMIT 1
-	FindOnboardingProgressByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) (OnboardingProgress, error)
+	FindOnboardingProgressByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) (FindOnboardingProgressByTenantRow, error)
 	//FindPendingAppointmentReminderEvents
 	//
 	//  SELECT e.id,
@@ -464,7 +464,7 @@ type Querier interface {
 	//  FROM services
 	//  WHERE id = $1
 	//    AND is_active = true
-	FindServiceByID(ctx context.Context, db DBTX, id uuid.UUID) (Service, error)
+	FindServiceByID(ctx context.Context, db DBTX, id uuid.UUID) (FindServiceByIDRow, error)
 	//FindServicesByResourceID
 	//
 	//  SELECT s.id,
@@ -483,7 +483,7 @@ type Querier interface {
 	//    AND rs.resource_id = $2
 	//    AND s.is_active = true
 	//  ORDER BY s.created_at
-	FindServicesByResourceID(ctx context.Context, db DBTX, arg FindServicesByResourceIDParams) ([]Service, error)
+	FindServicesByResourceID(ctx context.Context, db DBTX, arg FindServicesByResourceIDParams) ([]FindServicesByResourceIDRow, error)
 	//FindServicesByTenantID
 	//
 	//  SELECT id,
@@ -500,7 +500,7 @@ type Querier interface {
 	//  WHERE tenant_id = $1
 	//    AND is_active = true
 	//  ORDER BY created_at
-	FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error)
+	FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]FindServicesByTenantIDRow, error)
 	//FindServicesWithAssignedResourceByTenantID
 	//
 	//  SELECT DISTINCT s.id,
@@ -519,7 +519,7 @@ type Querier interface {
 	//  WHERE s.tenant_id = $1
 	//    AND s.is_active = true
 	//  ORDER BY s.created_at
-	FindServicesWithAssignedResourceByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error)
+	FindServicesWithAssignedResourceByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]FindServicesWithAssignedResourceByTenantIDRow, error)
 	//FindTenantByID
 	//
 	//  SELECT id,
@@ -527,8 +527,6 @@ type Querier interface {
 	//         slug,
 	//         timezone,
 	//         currency,
-	//         plan,
-	//         plan_expires_at,
 	//         appointments_this_month,
 	//         month_reset_at,
 	//         is_active,
@@ -539,7 +537,7 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND is_active = true
 	//  LIMIT 1
-	FindTenantByID(ctx context.Context, db DBTX, id uuid.UUID) (Tenant, error)
+	FindTenantByID(ctx context.Context, db DBTX, id uuid.UUID) (FindTenantByIDRow, error)
 	//FindTenantBySlug
 	//
 	//  SELECT id,
@@ -547,8 +545,6 @@ type Querier interface {
 	//         slug,
 	//         timezone,
 	//         currency,
-	//         plan,
-	//         plan_expires_at,
 	//         appointments_this_month,
 	//         month_reset_at,
 	//         is_active,
@@ -559,7 +555,7 @@ type Querier interface {
 	//  WHERE slug = $1
 	//    AND is_active = true
 	//  LIMIT 1
-	FindTenantBySlug(ctx context.Context, db DBTX, slug string) (Tenant, error)
+	FindTenantBySlug(ctx context.Context, db DBTX, slug string) (FindTenantBySlugRow, error)
 	//FindTenantByUserId
 	//
 	//  SELECT t.id,
@@ -567,8 +563,6 @@ type Querier interface {
 	//         t.slug,
 	//         t.timezone,
 	//         t.currency,
-	//         t.plan,
-	//         t.plan_expires_at,
 	//         t.appointments_this_month,
 	//         t.month_reset_at,
 	//         t.is_active,
@@ -580,7 +574,7 @@ type Querier interface {
 	//  WHERE tu.user_id = $1
 	//    AND t.is_active = true
 	//  LIMIT 1
-	FindTenantByUserId(ctx context.Context, db DBTX, userID string) (Tenant, error)
+	FindTenantByUserId(ctx context.Context, db DBTX, userID string) (FindTenantByUserIdRow, error)
 	//FindTenantEnabledFlowFields
 	//
 	//  SELECT id,
@@ -642,7 +636,6 @@ type Querier interface {
 	//         t.slug      AS tenant_slug,
 	//         t.timezone  AS tenant_timezone,
 	//         t.currency  AS tenant_currency,
-	//         t.plan      AS tenant_plan,
 	//         t.settings  AS tenant_settings,
 	//         t.is_active AS tenant_active,
 	//         t.month_reset_at,
@@ -929,7 +922,6 @@ type Querier interface {
 	//      slug,
 	//      timezone,
 	//      currency,
-	//      plan,
 	//      appointments_this_month,
 	//      month_reset_at,
 	//      is_active,
@@ -940,11 +932,10 @@ type Querier interface {
 	//      $3,
 	//      $4,
 	//      $5,
-	//      $6,
 	//      0,
-	//      $7,
+	//      $6,
 	//      true,
-	//      $8
+	//      $7
 	//  )
 	InsertTenant(ctx context.Context, db DBTX, arg InsertTenantParams) error
 	//InsertTenantFlowField

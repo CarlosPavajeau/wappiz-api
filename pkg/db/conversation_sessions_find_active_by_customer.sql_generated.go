@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -33,6 +35,18 @@ type FindCustomerActiveConversationSessionParams struct {
 	CustomerID uuid.UUID `db:"customer_id"`
 }
 
+type FindCustomerActiveConversationSessionRow struct {
+	ID               uuid.UUID       `db:"id"`
+	TenantID         uuid.UUID       `db:"tenant_id"`
+	WhatsappConfigID uuid.UUID       `db:"whatsapp_config_id"`
+	CustomerID       uuid.UUID       `db:"customer_id"`
+	Step             string          `db:"step"`
+	Data             json.RawMessage `db:"data"`
+	ExpiresAt        time.Time       `db:"expires_at"`
+	CreatedAt        time.Time       `db:"created_at"`
+	UpdatedAt        time.Time       `db:"updated_at"`
+}
+
 // FindCustomerActiveConversationSession
 //
 //	SELECT id,
@@ -49,9 +63,9 @@ type FindCustomerActiveConversationSessionParams struct {
 //	  AND customer_id = $2
 //	  AND expires_at > NOW()
 //	LIMIT 1
-func (q *Queries) FindCustomerActiveConversationSession(ctx context.Context, db DBTX, arg FindCustomerActiveConversationSessionParams) (ConversationSession, error) {
+func (q *Queries) FindCustomerActiveConversationSession(ctx context.Context, db DBTX, arg FindCustomerActiveConversationSessionParams) (FindCustomerActiveConversationSessionRow, error) {
 	row := db.QueryRowContext(ctx, findCustomerActiveConversationSession, arg.TenantID, arg.CustomerID)
-	var i ConversationSession
+	var i FindCustomerActiveConversationSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,

@@ -7,6 +7,9 @@ package db
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 const findTenantByUserId = `-- name: FindTenantByUserId :one
@@ -15,8 +18,6 @@ SELECT t.id,
        t.slug,
        t.timezone,
        t.currency,
-       t.plan,
-       t.plan_expires_at,
        t.appointments_this_month,
        t.month_reset_at,
        t.is_active,
@@ -30,6 +31,20 @@ WHERE tu.user_id = $1
 LIMIT 1
 `
 
+type FindTenantByUserIdRow struct {
+	ID                    uuid.UUID `db:"id"`
+	Name                  string    `db:"name"`
+	Slug                  string    `db:"slug"`
+	Timezone              string    `db:"timezone"`
+	Currency              string    `db:"currency"`
+	AppointmentsThisMonth int32     `db:"appointments_this_month"`
+	MonthResetAt          time.Time `db:"month_reset_at"`
+	IsActive              bool      `db:"is_active"`
+	Settings              []byte    `db:"settings"`
+	CreatedAt             time.Time `db:"created_at"`
+	UpdatedAt             time.Time `db:"updated_at"`
+}
+
 // FindTenantByUserId
 //
 //	SELECT t.id,
@@ -37,8 +52,6 @@ LIMIT 1
 //	       t.slug,
 //	       t.timezone,
 //	       t.currency,
-//	       t.plan,
-//	       t.plan_expires_at,
 //	       t.appointments_this_month,
 //	       t.month_reset_at,
 //	       t.is_active,
@@ -50,17 +63,15 @@ LIMIT 1
 //	WHERE tu.user_id = $1
 //	  AND t.is_active = true
 //	LIMIT 1
-func (q *Queries) FindTenantByUserId(ctx context.Context, db DBTX, userID string) (Tenant, error) {
+func (q *Queries) FindTenantByUserId(ctx context.Context, db DBTX, userID string) (FindTenantByUserIdRow, error) {
 	row := db.QueryRowContext(ctx, findTenantByUserId, userID)
-	var i Tenant
+	var i FindTenantByUserIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.Timezone,
 		&i.Currency,
-		&i.Plan,
-		&i.PlanExpiresAt,
 		&i.AppointmentsThisMonth,
 		&i.MonthResetAt,
 		&i.IsActive,

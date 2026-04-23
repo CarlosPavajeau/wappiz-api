@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,15 +20,24 @@ WHERE tenant_id = $1
 LIMIT 1
 `
 
+type FindOnboardingProgressByTenantRow struct {
+	ID          uuid.UUID    `db:"id"`
+	TenantID    uuid.UUID    `db:"tenant_id"`
+	CurrentStep int32        `db:"current_step"`
+	CompletedAt sql.NullTime `db:"completed_at"`
+	CreatedAt   time.Time    `db:"created_at"`
+	UpdatedAt   time.Time    `db:"updated_at"`
+}
+
 // FindOnboardingProgressByTenant
 //
 //	SELECT id, tenant_id, current_step, completed_at, created_at, updated_at
 //	FROM onboarding_progress
 //	WHERE tenant_id = $1
 //	LIMIT 1
-func (q *Queries) FindOnboardingProgressByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) (OnboardingProgress, error) {
+func (q *Queries) FindOnboardingProgressByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) (FindOnboardingProgressByTenantRow, error) {
 	row := db.QueryRowContext(ctx, findOnboardingProgressByTenant, tenantID)
-	var i OnboardingProgress
+	var i FindOnboardingProgressByTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,

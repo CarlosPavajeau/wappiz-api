@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *service) handleSelectResource(ctx context.Context, msg IncomingMessage, session db.ConversationSession) error {
+func (s *service) handleSelectResource(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow) error {
 	interactiveID := msg.InteractiveID
 
 	var sessionData SessionData

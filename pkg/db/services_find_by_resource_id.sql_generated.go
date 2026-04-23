@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -35,6 +37,19 @@ type FindServicesByResourceIDParams struct {
 	ResourceID uuid.UUID `db:"resource_id"`
 }
 
+type FindServicesByResourceIDRow struct {
+	ID              uuid.UUID      `db:"id"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
+	Name            string         `db:"name"`
+	Description     sql.NullString `db:"description"`
+	DurationMinutes int32          `db:"duration_minutes"`
+	BufferMinutes   int32          `db:"buffer_minutes"`
+	Price           string         `db:"price"`
+	IsActive        bool           `db:"is_active"`
+	SortOrder       int32          `db:"sort_order"`
+	CreatedAt       time.Time      `db:"created_at"`
+}
+
 // FindServicesByResourceID
 //
 //	SELECT s.id,
@@ -53,15 +68,15 @@ type FindServicesByResourceIDParams struct {
 //	  AND rs.resource_id = $2
 //	  AND s.is_active = true
 //	ORDER BY s.created_at
-func (q *Queries) FindServicesByResourceID(ctx context.Context, db DBTX, arg FindServicesByResourceIDParams) ([]Service, error) {
+func (q *Queries) FindServicesByResourceID(ctx context.Context, db DBTX, arg FindServicesByResourceIDParams) ([]FindServicesByResourceIDRow, error) {
 	rows, err := db.QueryContext(ctx, findServicesByResourceID, arg.TenantID, arg.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Service
+	var items []FindServicesByResourceIDRow
 	for rows.Next() {
-		var i Service
+		var i FindServicesByResourceIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

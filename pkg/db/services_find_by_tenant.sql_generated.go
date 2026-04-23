@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +30,19 @@ WHERE tenant_id = $1
 ORDER BY created_at
 `
 
+type FindServicesByTenantIDRow struct {
+	ID              uuid.UUID      `db:"id"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
+	Name            string         `db:"name"`
+	Description     sql.NullString `db:"description"`
+	DurationMinutes int32          `db:"duration_minutes"`
+	BufferMinutes   int32          `db:"buffer_minutes"`
+	Price           string         `db:"price"`
+	IsActive        bool           `db:"is_active"`
+	SortOrder       int32          `db:"sort_order"`
+	CreatedAt       time.Time      `db:"created_at"`
+}
+
 // FindServicesByTenantID
 //
 //	SELECT id,
@@ -44,15 +59,15 @@ ORDER BY created_at
 //	WHERE tenant_id = $1
 //	  AND is_active = true
 //	ORDER BY created_at
-func (q *Queries) FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error) {
+func (q *Queries) FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]FindServicesByTenantIDRow, error) {
 	rows, err := db.QueryContext(ctx, findServicesByTenantID, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Service
+	var items []FindServicesByTenantIDRow
 	for rows.Next() {
-		var i Service
+		var i FindServicesByTenantIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

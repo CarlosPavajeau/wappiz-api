@@ -19,7 +19,6 @@ INSERT INTO tenants(
     slug,
     timezone,
     currency,
-    plan,
     appointments_this_month,
     month_reset_at,
     is_active,
@@ -30,11 +29,10 @@ INSERT INTO tenants(
     $3,
     $4,
     $5,
-    $6,
     0,
-    $7,
+    $6,
     true,
-    $8
+    $7
 )
 `
 
@@ -44,7 +42,6 @@ type InsertTenantParams struct {
 	Slug         string    `db:"slug"`
 	Timezone     string    `db:"timezone"`
 	Currency     string    `db:"currency"`
-	Plan         string    `db:"plan"`
 	MonthResetAt time.Time `db:"month_reset_at"`
 	Settings     []byte    `db:"settings"`
 }
@@ -57,7 +54,6 @@ type InsertTenantParams struct {
 //	    slug,
 //	    timezone,
 //	    currency,
-//	    plan,
 //	    appointments_this_month,
 //	    month_reset_at,
 //	    is_active,
@@ -68,11 +64,10 @@ type InsertTenantParams struct {
 //	    $3,
 //	    $4,
 //	    $5,
-//	    $6,
 //	    0,
-//	    $7,
+//	    $6,
 //	    true,
-//	    $8
+//	    $7
 //	)
 func (q *Queries) InsertTenant(ctx context.Context, db DBTX, arg InsertTenantParams) error {
 	_, err := db.ExecContext(ctx, insertTenant,
@@ -81,7 +76,6 @@ func (q *Queries) InsertTenant(ctx context.Context, db DBTX, arg InsertTenantPar
 		arg.Slug,
 		arg.Timezone,
 		arg.Currency,
-		arg.Plan,
 		arg.MonthResetAt,
 		arg.Settings,
 	)

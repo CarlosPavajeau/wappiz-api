@@ -12,7 +12,7 @@ import (
 	"wappiz/pkg/logger"
 )
 
-func (s *service) validateAndFindSlots(ctx context.Context, input, timezone string, session db.ConversationSession) (*DateValidationResult, error) {
+func (s *service) validateAndFindSlots(ctx context.Context, input, timezone string, session db.FindCustomerActiveConversationSessionRow) (*DateValidationResult, error) {
 	loc, _ := time.LoadLocation(timezone)
 	t, err := date_parser.ParseDateTime(input, loc)
 	if err != nil {

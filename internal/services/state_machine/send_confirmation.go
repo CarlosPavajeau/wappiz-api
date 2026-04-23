@@ -9,7 +9,7 @@ import (
 	"wappiz/pkg/whatsapp"
 )
 
-func (s *service) sendConfirmation(ctx context.Context, msg IncomingMessage, session db.ConversationSession) error {
+func (s *service) sendConfirmation(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow) error {
 	var sessionData SessionData
 	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
 		return err

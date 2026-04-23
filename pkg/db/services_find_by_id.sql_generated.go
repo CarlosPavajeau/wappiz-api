@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +29,19 @@ WHERE id = $1
   AND is_active = true
 `
 
+type FindServiceByIDRow struct {
+	ID              uuid.UUID      `db:"id"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
+	Name            string         `db:"name"`
+	Description     sql.NullString `db:"description"`
+	DurationMinutes int32          `db:"duration_minutes"`
+	BufferMinutes   int32          `db:"buffer_minutes"`
+	Price           string         `db:"price"`
+	IsActive        bool           `db:"is_active"`
+	SortOrder       int32          `db:"sort_order"`
+	CreatedAt       time.Time      `db:"created_at"`
+}
+
 // FindServiceByID
 //
 //	SELECT id,
@@ -42,9 +57,9 @@ WHERE id = $1
 //	FROM services
 //	WHERE id = $1
 //	  AND is_active = true
-func (q *Queries) FindServiceByID(ctx context.Context, db DBTX, id uuid.UUID) (Service, error) {
+func (q *Queries) FindServiceByID(ctx context.Context, db DBTX, id uuid.UUID) (FindServiceByIDRow, error) {
 	row := db.QueryRowContext(ctx, findServiceByID, id)
-	var i Service
+	var i FindServiceByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,

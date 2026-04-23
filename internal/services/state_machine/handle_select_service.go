@@ -9,7 +9,7 @@ import (
 	"wappiz/pkg/logger"
 )
 
-func (s *service) handleSelectService(ctx context.Context, msg IncomingMessage, session db.ConversationSession) error {
+func (s *service) handleSelectService(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow) error {
 	svc, err := s.validateService(ctx, msg.TenantID, msg.InteractiveID)
 	if err != nil {
 		return s.sendServiceList(ctx, msg)

@@ -8,7 +8,7 @@ import (
 	"wappiz/pkg/logger"
 )
 
-func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
+func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow, customer db.FindCustomerByPhoneNumberRow) error {
 	var sessionData SessionData
 	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
 		logger.Error("[scheduling] failed to marshal session data on select resource step",

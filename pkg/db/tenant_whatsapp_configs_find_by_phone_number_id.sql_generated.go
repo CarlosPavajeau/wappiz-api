@@ -29,7 +29,6 @@ SELECT twc.id,
        t.slug      AS tenant_slug,
        t.timezone  AS tenant_timezone,
        t.currency  AS tenant_currency,
-       t.plan      AS tenant_plan,
        t.settings  AS tenant_settings,
        t.is_active AS tenant_active,
        t.month_reset_at,
@@ -58,7 +57,6 @@ type FindTenantWhatsappConfigByPhoneNumberIDRow struct {
 	TenantSlug            string         `db:"tenant_slug"`
 	TenantTimezone        string         `db:"tenant_timezone"`
 	TenantCurrency        string         `db:"tenant_currency"`
-	TenantPlan            string         `db:"tenant_plan"`
 	TenantSettings        []byte         `db:"tenant_settings"`
 	TenantActive          bool           `db:"tenant_active"`
 	MonthResetAt          time.Time      `db:"month_reset_at"`
@@ -82,7 +80,6 @@ type FindTenantWhatsappConfigByPhoneNumberIDRow struct {
 //	       t.slug      AS tenant_slug,
 //	       t.timezone  AS tenant_timezone,
 //	       t.currency  AS tenant_currency,
-//	       t.plan      AS tenant_plan,
 //	       t.settings  AS tenant_settings,
 //	       t.is_active AS tenant_active,
 //	       t.month_reset_at,
@@ -112,7 +109,6 @@ func (q *Queries) FindTenantWhatsappConfigByPhoneNumberID(ctx context.Context, d
 		&i.TenantSlug,
 		&i.TenantTimezone,
 		&i.TenantCurrency,
-		&i.TenantPlan,
 		&i.TenantSettings,
 		&i.TenantActive,
 		&i.MonthResetAt,

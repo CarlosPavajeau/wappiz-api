@@ -7,7 +7,7 @@ import (
 	"wappiz/pkg/db"
 )
 
-func (s *service) updateSession(ctx context.Context, session db.ConversationSession, sessionData SessionData) (db.ConversationSession, error) {
+func (s *service) updateSession(ctx context.Context, session db.FindCustomerActiveConversationSessionRow, sessionData SessionData) (db.FindCustomerActiveConversationSessionRow, error) {
 	updatedData, err := json.Marshal(sessionData)
 	if err != nil {
 		return session, fmt.Errorf("marshal session data: %w", err)

@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -30,6 +32,19 @@ WHERE s.tenant_id = $1
 ORDER BY s.created_at
 `
 
+type FindServicesWithAssignedResourceByTenantIDRow struct {
+	ID              uuid.UUID      `db:"id"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
+	Name            string         `db:"name"`
+	Description     sql.NullString `db:"description"`
+	DurationMinutes int32          `db:"duration_minutes"`
+	BufferMinutes   int32          `db:"buffer_minutes"`
+	Price           string         `db:"price"`
+	IsActive        bool           `db:"is_active"`
+	SortOrder       int32          `db:"sort_order"`
+	CreatedAt       time.Time      `db:"created_at"`
+}
+
 // FindServicesWithAssignedResourceByTenantID
 //
 //	SELECT DISTINCT s.id,
@@ -48,15 +63,15 @@ ORDER BY s.created_at
 //	WHERE s.tenant_id = $1
 //	  AND s.is_active = true
 //	ORDER BY s.created_at
-func (q *Queries) FindServicesWithAssignedResourceByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error) {
+func (q *Queries) FindServicesWithAssignedResourceByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]FindServicesWithAssignedResourceByTenantIDRow, error) {
 	rows, err := db.QueryContext(ctx, findServicesWithAssignedResourceByTenantID, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Service
+	var items []FindServicesWithAssignedResourceByTenantIDRow
 	for rows.Next() {
-		var i Service
+		var i FindServicesWithAssignedResourceByTenantIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,8 +18,6 @@ SELECT id,
        slug,
        timezone,
        currency,
-       plan,
-       plan_expires_at,
        appointments_this_month,
        month_reset_at,
        is_active,
@@ -31,6 +30,20 @@ WHERE id = $1
 LIMIT 1
 `
 
+type FindTenantByIDRow struct {
+	ID                    uuid.UUID `db:"id"`
+	Name                  string    `db:"name"`
+	Slug                  string    `db:"slug"`
+	Timezone              string    `db:"timezone"`
+	Currency              string    `db:"currency"`
+	AppointmentsThisMonth int32     `db:"appointments_this_month"`
+	MonthResetAt          time.Time `db:"month_reset_at"`
+	IsActive              bool      `db:"is_active"`
+	Settings              []byte    `db:"settings"`
+	CreatedAt             time.Time `db:"created_at"`
+	UpdatedAt             time.Time `db:"updated_at"`
+}
+
 // FindTenantByID
 //
 //	SELECT id,
@@ -38,8 +51,6 @@ LIMIT 1
 //	       slug,
 //	       timezone,
 //	       currency,
-//	       plan,
-//	       plan_expires_at,
 //	       appointments_this_month,
 //	       month_reset_at,
 //	       is_active,
@@ -50,17 +61,15 @@ LIMIT 1
 //	WHERE id = $1
 //	  AND is_active = true
 //	LIMIT 1
-func (q *Queries) FindTenantByID(ctx context.Context, db DBTX, id uuid.UUID) (Tenant, error) {
+func (q *Queries) FindTenantByID(ctx context.Context, db DBTX, id uuid.UUID) (FindTenantByIDRow, error) {
 	row := db.QueryRowContext(ctx, findTenantByID, id)
-	var i Tenant
+	var i FindTenantByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.Timezone,
 		&i.Currency,
-		&i.Plan,
-		&i.PlanExpiresAt,
 		&i.AppointmentsThisMonth,
 		&i.MonthResetAt,
 		&i.IsActive,

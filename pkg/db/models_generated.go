@@ -164,85 +164,85 @@ type Account struct {
 }
 
 type Appointment struct {
+	CancelReason      sql.NullString    `db:"cancel_reason"`
+	CancelledAt       sql.NullTime      `db:"cancelled_at"`
+	CancelledBy       sql.NullString    `db:"cancelled_by"`
+	CompletedAt       sql.NullTime      `db:"completed_at"`
+	CreatedAt         time.Time         `db:"created_at"`
+	CustomerID        uuid.UUID         `db:"customer_id"`
+	EndsAt            time.Time         `db:"ends_at"`
 	ID                uuid.UUID         `db:"id"`
-	TenantID          uuid.UUID         `db:"tenant_id"`
+	Notes             sql.NullString    `db:"notes"`
+	PriceAtBooking    string            `db:"price_at_booking"`
+	Reminder1hSentAt  sql.NullTime      `db:"reminder_1h_sent_at"`
+	Reminder24hSentAt sql.NullTime      `db:"reminder_24h_sent_at"`
 	ResourceID        uuid.UUID         `db:"resource_id"`
 	ServiceID         uuid.UUID         `db:"service_id"`
-	CustomerID        uuid.UUID         `db:"customer_id"`
 	StartsAt          time.Time         `db:"starts_at"`
-	EndsAt            time.Time         `db:"ends_at"`
 	Status            AppointmentStatus `db:"status"`
-	CancelledBy       sql.NullString    `db:"cancelled_by"`
-	CancelReason      sql.NullString    `db:"cancel_reason"`
-	PriceAtBooking    string            `db:"price_at_booking"`
-	Reminder24hSentAt sql.NullTime      `db:"reminder_24h_sent_at"`
-	Reminder1hSentAt  sql.NullTime      `db:"reminder_1h_sent_at"`
-	Notes             sql.NullString    `db:"notes"`
-	CreatedAt         time.Time         `db:"created_at"`
+	TenantID          uuid.UUID         `db:"tenant_id"`
 	UpdatedAt         time.Time         `db:"updated_at"`
-	CancelledAt       sql.NullTime      `db:"cancelled_at"`
-	CompletedAt       sql.NullTime      `db:"completed_at"`
 }
 
 type AppointmentPenaltyEvent struct {
-	ID            uuid.UUID `db:"id"`
 	AppointmentID uuid.UUID `db:"appointment_id"`
-	TenantID      uuid.UUID `db:"tenant_id"`
+	CreatedAt     time.Time `db:"created_at"`
 	CustomerID    uuid.UUID `db:"customer_id"`
 	EventType     string    `db:"event_type"`
+	ID            uuid.UUID `db:"id"`
 	OccurredAt    time.Time `db:"occurred_at"`
-	CreatedAt     time.Time `db:"created_at"`
+	TenantID      uuid.UUID `db:"tenant_id"`
 }
 
 type AppointmentReminderEvent struct {
-	ID            uuid.UUID      `db:"id"`
 	AppointmentID uuid.UUID      `db:"appointment_id"`
-	TenantID      uuid.UUID      `db:"tenant_id"`
-	CustomerID    uuid.UUID      `db:"customer_id"`
-	ReminderType  string         `db:"reminder_type"`
 	Attempts      int32          `db:"attempts"`
-	SentAt        sql.NullTime   `db:"sent_at"`
+	CreatedAt     time.Time      `db:"created_at"`
+	CustomerID    uuid.UUID      `db:"customer_id"`
+	ID            uuid.UUID      `db:"id"`
 	LastAttemptAt sql.NullTime   `db:"last_attempt_at"`
 	LastError     sql.NullString `db:"last_error"`
-	CreatedAt     time.Time      `db:"created_at"`
+	ReminderType  string         `db:"reminder_type"`
+	SentAt        sql.NullTime   `db:"sent_at"`
+	TenantID      uuid.UUID      `db:"tenant_id"`
 }
 
 type AppointmentStatusHistory struct {
-	ID            uuid.UUID         `db:"id"`
 	AppointmentID uuid.UUID         `db:"appointment_id"`
-	FromStatus    AppointmentStatus `db:"from_status"`
-	ToStatus      AppointmentStatus `db:"to_status"`
 	ChangedBy     sql.NullString    `db:"changed_by"`
 	ChangedByRole sql.NullString    `db:"changed_by_role"`
-	Reason        sql.NullString    `db:"reason"`
 	CreatedAt     time.Time         `db:"created_at"`
+	FromStatus    AppointmentStatus `db:"from_status"`
+	ID            uuid.UUID         `db:"id"`
+	Reason        sql.NullString    `db:"reason"`
+	ToStatus      AppointmentStatus `db:"to_status"`
 }
 
 type ConversationSession struct {
-	ID               uuid.UUID       `db:"id"`
-	TenantID         uuid.UUID       `db:"tenant_id"`
-	WhatsappConfigID uuid.UUID       `db:"whatsapp_config_id"`
+	CreatedAt        time.Time       `db:"created_at"`
 	CustomerID       uuid.UUID       `db:"customer_id"`
-	Step             string          `db:"step"`
 	Data             json.RawMessage `db:"data"`
 	ExpiresAt        time.Time       `db:"expires_at"`
-	CreatedAt        time.Time       `db:"created_at"`
+	ID               uuid.UUID       `db:"id"`
+	Step             string          `db:"step"`
+	TenantID         uuid.UUID       `db:"tenant_id"`
 	UpdatedAt        time.Time       `db:"updated_at"`
+	WhatsappConfigID uuid.UUID       `db:"whatsapp_config_id"`
 }
 
 type Customer struct {
-	ID              uuid.UUID      `db:"id"`
-	TenantID        uuid.UUID      `db:"tenant_id"`
-	PhoneNumber     string         `db:"phone_number"`
-	Name            sql.NullString `db:"name"`
-	DocumentId      sql.NullString `db:"documentId"`
-	BirthDate       sql.NullTime   `db:"birth_date"`
-	Email           sql.NullString `db:"email"`
 	Address         sql.NullString `db:"address"`
-	IsBlocked       bool           `db:"is_blocked"`
+	BirthDate       sql.NullTime   `db:"birth_date"`
 	CreatedAt       time.Time      `db:"created_at"`
-	NoShowCount     int32          `db:"no_show_count"`
+	DocumentId      sql.NullString `db:"documentId"`
+	Email           sql.NullString `db:"email"`
+	ID              uuid.UUID      `db:"id"`
+	IsBlocked       bool           `db:"is_blocked"`
 	LateCancelCount int32          `db:"late_cancel_count"`
+	Name            sql.NullString `db:"name"`
+	NoShowCount     int32          `db:"no_show_count"`
+	PhoneNumber     string         `db:"phone_number"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
 }
 
 type Jwk struct {
@@ -254,11 +254,11 @@ type Jwk struct {
 }
 
 type OnboardingProgress struct {
-	ID          uuid.UUID    `db:"id"`
-	TenantID    uuid.UUID    `db:"tenant_id"`
-	CurrentStep int32        `db:"current_step"`
 	CompletedAt sql.NullTime `db:"completed_at"`
 	CreatedAt   time.Time    `db:"created_at"`
+	CurrentStep int32        `db:"current_step"`
+	ID          uuid.UUID    `db:"id"`
+	TenantID    uuid.UUID    `db:"tenant_id"`
 	UpdatedAt   time.Time    `db:"updated_at"`
 }
 
@@ -279,14 +279,14 @@ type Plan struct {
 }
 
 type Resource struct {
-	ID        uuid.UUID      `db:"id"`
-	TenantID  uuid.UUID      `db:"tenant_id"`
-	Name      string         `db:"name"`
-	Type      string         `db:"type"`
 	AvatarUrl sql.NullString `db:"avatar_url"`
-	IsActive  bool           `db:"is_active"`
-	SortOrder int32          `db:"sort_order"`
 	CreatedAt time.Time      `db:"created_at"`
+	ID        uuid.UUID      `db:"id"`
+	IsActive  bool           `db:"is_active"`
+	Name      string         `db:"name"`
+	SortOrder int32          `db:"sort_order"`
+	TenantID  uuid.UUID      `db:"tenant_id"`
+	Type      string         `db:"type"`
 }
 
 type ResourceService struct {
@@ -295,27 +295,27 @@ type ResourceService struct {
 }
 
 type ScheduleOverride struct {
-	ID         uuid.UUID      `db:"id"`
-	ResourceID uuid.UUID      `db:"resource_id"`
-	Date       time.Time      `db:"date"`
-	IsDayOff   bool           `db:"is_day_off"`
-	StartTime  sql.NullString `db:"start_time"`
-	EndTime    sql.NullString `db:"end_time"`
-	Reason     sql.NullString `db:"reason"`
 	CreatedAt  time.Time      `db:"created_at"`
+	Date       time.Time      `db:"date"`
+	EndTime    sql.NullString `db:"end_time"`
+	ID         uuid.UUID      `db:"id"`
+	IsDayOff   bool           `db:"is_day_off"`
+	Reason     sql.NullString `db:"reason"`
+	ResourceID uuid.UUID      `db:"resource_id"`
+	StartTime  sql.NullString `db:"start_time"`
 }
 
 type Service struct {
-	ID              uuid.UUID      `db:"id"`
-	TenantID        uuid.UUID      `db:"tenant_id"`
-	Name            string         `db:"name"`
+	BufferMinutes   int32          `db:"buffer_minutes"`
+	CreatedAt       time.Time      `db:"created_at"`
 	Description     sql.NullString `db:"description"`
 	DurationMinutes int32          `db:"duration_minutes"`
-	BufferMinutes   int32          `db:"buffer_minutes"`
-	Price           string         `db:"price"`
+	ID              uuid.UUID      `db:"id"`
 	IsActive        bool           `db:"is_active"`
+	Name            string         `db:"name"`
+	Price           string         `db:"price"`
 	SortOrder       int32          `db:"sort_order"`
-	CreatedAt       time.Time      `db:"created_at"`
+	TenantID        uuid.UUID      `db:"tenant_id"`
 }
 
 type Session struct {
@@ -358,56 +358,54 @@ type SubscriptionOrder struct {
 }
 
 type Tenant struct {
-	ID                    uuid.UUID    `db:"id"`
-	Name                  string       `db:"name"`
-	Slug                  string       `db:"slug"`
-	Timezone              string       `db:"timezone"`
-	Currency              string       `db:"currency"`
-	Plan                  string       `db:"plan"`
-	PlanExpiresAt         sql.NullTime `db:"plan_expires_at"`
-	AppointmentsThisMonth int32        `db:"appointments_this_month"`
-	MonthResetAt          time.Time    `db:"month_reset_at"`
-	IsActive              bool         `db:"is_active"`
-	Settings              []byte       `db:"settings"`
-	CreatedAt             time.Time    `db:"created_at"`
-	UpdatedAt             time.Time    `db:"updated_at"`
+	AppointmentsThisMonth int32     `db:"appointments_this_month"`
+	CreatedAt             time.Time `db:"created_at"`
+	Currency              string    `db:"currency"`
+	ID                    uuid.UUID `db:"id"`
+	IsActive              bool      `db:"is_active"`
+	MonthResetAt          time.Time `db:"month_reset_at"`
+	Name                  string    `db:"name"`
+	Settings              []byte    `db:"settings"`
+	Slug                  string    `db:"slug"`
+	Timezone              string    `db:"timezone"`
+	UpdatedAt             time.Time `db:"updated_at"`
 }
 
 type TenantFlowField struct {
-	ID         uuid.UUID      `db:"id"`
-	TenantID   uuid.UUID      `db:"tenant_id"`
+	CreatedAt  time.Time      `db:"created_at"`
 	FieldKey   string         `db:"field_key"`
 	FieldType  FlowFieldType  `db:"field_type"`
-	Question   sql.NullString `db:"question"`
-	IsRequired bool           `db:"is_required"`
+	ID         uuid.UUID      `db:"id"`
 	IsEnabled  bool           `db:"is_enabled"`
+	IsRequired bool           `db:"is_required"`
+	Question   sql.NullString `db:"question"`
 	SortOrder  int32          `db:"sort_order"`
-	CreatedAt  time.Time      `db:"created_at"`
+	TenantID   uuid.UUID      `db:"tenant_id"`
 }
 
 type TenantUser struct {
-	UserID   string    `db:"user_id"`
-	TenantID uuid.UUID `db:"tenant_id"`
 	Role     string    `db:"role"`
+	TenantID uuid.UUID `db:"tenant_id"`
+	UserID   string    `db:"user_id"`
 }
 
 type TenantWhatsappConfig struct {
-	ID                     uuid.UUID                `db:"id"`
-	TenantID               uuid.UUID                `db:"tenant_id"`
-	WabaID                 sql.NullString           `db:"waba_id"`
-	PhoneNumberID          sql.NullString           `db:"phone_number_id"`
-	DisplayPhoneNumber     sql.NullString           `db:"display_phone_number"`
 	AccessToken            sql.NullString           `db:"access_token"`
-	TokenExpiresAt         sql.NullTime             `db:"token_expires_at"`
-	IsActive               bool                     `db:"is_active"`
-	VerifiedAt             sql.NullTime             `db:"verified_at"`
-	CreatedAt              time.Time                `db:"created_at"`
-	UpdatedAt              time.Time                `db:"updated_at"`
-	ActivationStatus       WhatsappActivationStatus `db:"activation_status"`
-	ActivationRequestedAt  sql.NullTime             `db:"activation_requested_at"`
-	ActivationNotes        sql.NullString           `db:"activation_notes"`
 	ActivationContactEmail sql.NullString           `db:"activation_contact_email"`
+	ActivationNotes        sql.NullString           `db:"activation_notes"`
+	ActivationRequestedAt  sql.NullTime             `db:"activation_requested_at"`
+	ActivationStatus       WhatsappActivationStatus `db:"activation_status"`
+	CreatedAt              time.Time                `db:"created_at"`
+	DisplayPhoneNumber     sql.NullString           `db:"display_phone_number"`
+	ID                     uuid.UUID                `db:"id"`
+	IsActive               bool                     `db:"is_active"`
+	PhoneNumberID          sql.NullString           `db:"phone_number_id"`
 	RejectReason           sql.NullString           `db:"reject_reason"`
+	TenantID               uuid.UUID                `db:"tenant_id"`
+	TokenExpiresAt         sql.NullTime             `db:"token_expires_at"`
+	UpdatedAt              time.Time                `db:"updated_at"`
+	VerifiedAt             sql.NullTime             `db:"verified_at"`
+	WabaID                 sql.NullString           `db:"waba_id"`
 }
 
 type User struct {
@@ -434,10 +432,10 @@ type Verification struct {
 }
 
 type WorkingHour struct {
-	ID         uuid.UUID `db:"id"`
-	ResourceID uuid.UUID `db:"resource_id"`
 	DayOfWeek  int16     `db:"day_of_week"`
-	StartTime  time.Time `db:"start_time"`
 	EndTime    time.Time `db:"end_time"`
+	ID         uuid.UUID `db:"id"`
 	IsActive   bool      `db:"is_active"`
+	ResourceID uuid.UUID `db:"resource_id"`
+	StartTime  time.Time `db:"start_time"`
 }

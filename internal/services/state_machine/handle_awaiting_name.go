@@ -9,7 +9,7 @@ import (
 	"wappiz/pkg/db"
 )
 
-func (s *service) handleAwaitingName(ctx context.Context, msg IncomingMessage, session db.ConversationSession, customer db.FindCustomerByPhoneNumberRow) error {
+func (s *service) handleAwaitingName(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow, customer db.FindCustomerByPhoneNumberRow) error {
 	name := strings.TrimSpace(msg.Body)
 	if len(name) < 2 {
 		return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
