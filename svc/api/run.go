@@ -131,7 +131,7 @@ func Run(ctx context.Context, cfg Config) error {
 		DB:          database,
 		Whatsapp:    waSvc,
 		SlotFinder:  slotFinder,
-		Environment: "sandbox",
+		Environment: cfg.Environment,
 	})
 
 	ctr := counter.NewMemoryCounter(clk)
@@ -172,6 +172,7 @@ func Run(ctx context.Context, cfg Config) error {
 		AppSecret:        cfg.WhatsappAppSecret,
 		Crypto:           cryptoSvc,
 		Ratelimit:        rlSvc,
+		Environment:      cfg.Environment,
 	})
 
 	reminderJob := reminder_job.New(reminder_job.Config{

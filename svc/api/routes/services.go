@@ -44,4 +44,7 @@ type Services struct {
 
 	// Ratelimit provides distributed rate limiting across API requests.
 	Ratelimit ratelimit.Service
+
+	// Environment can be sandbox or production, used to filter active plans in the database
+	Environment string
 }

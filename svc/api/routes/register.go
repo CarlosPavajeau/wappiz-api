@@ -157,8 +157,8 @@ func Register(g *gin.Engine, svc *Services) {
 	RegisterRoute(auth, &resources_get_services.Handler{DB: svc.Database})
 
 	// v1/plans
-	RegisterRoute(auth, &plans_list_active.Handler{DB: svc.Database, Environment: "sandbox"})
-	RegisterRoute(auth, &plans_get_by_external_id.Handler{DB: svc.Database, Environment: "sandbox"})
+	RegisterRoute(auth, &plans_list_active.Handler{DB: svc.Database, Environment: svc.Environment})
+	RegisterRoute(auth, &plans_get_by_external_id.Handler{DB: svc.Database, Environment: svc.Environment})
 
 	// v1/admin
 	admin := auth.Group("/", func(c *gin.Context) {

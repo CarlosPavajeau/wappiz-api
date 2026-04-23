@@ -85,6 +85,8 @@ type Config struct {
 	JWTIssuer     string
 	Observability Observability
 	Webhook       WebhookConfig
+	// Environment can be sandbox or production, used to filter active plans in the database
+	Environment string
 }
 
 // LoadConfiguration reads configuration from a .env file if present, then falls back
@@ -153,6 +155,7 @@ func LoadConfiguration() Config {
 		ResendAPIKey:       mustGet("RESEND_API_KEY"),
 		ResendFromEmail:    mustGet("RESEND_FROM_EMAIL"),
 		JWTIssuer:          os.Getenv("JWT_ISSUER"), // optional
+		Environment:        getOrDefault("ENVIRONMENT", "production"),
 		Observability: Observability{
 			Tracing: &TracingConfig{
 				SampleRate: sampleRate,
