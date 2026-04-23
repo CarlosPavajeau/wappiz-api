@@ -128,9 +128,10 @@ func Run(ctx context.Context, cfg Config) error {
 	})
 	slotFinder := slot_finder.New(database)
 	stateMachineSvc := state_machine.New(state_machine.Config{
-		DB:         database,
-		Whatsapp:   waSvc,
-		SlotFinder: slotFinder,
+		DB:          database,
+		Whatsapp:    waSvc,
+		SlotFinder:  slotFinder,
+		Environment: "sandbox",
 	})
 
 	ctr := counter.NewMemoryCounter(clk)

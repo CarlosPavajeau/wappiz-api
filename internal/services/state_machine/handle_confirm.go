@@ -2,7 +2,9 @@ package state_machine
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 	"wappiz/pkg/db"
@@ -30,7 +32,25 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 			return fmt.Errorf("find tenant by id: %w", err)
 		}
 
-		if tenant.Plan == "free" && tenant.AppointmentsThisMonth >= freePlanLimit {
+		plan, err := db.Query.FindActivePlanByTenant(ctx, s.db.Primary(), db.FindActivePlanByTenantParams{
+			TenantID:    tenant.ID,
+			Environment: s.environment,
+		})
+
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("find active plan by tenant: %w", err)
+			} else if tenant.AppointmentsThisMonth >= freePlanLimit { // If no active plan is found, we assume the tenant is on the free plan and enforce the limit.
+				return apperrors.ErrPlanLimitReached
+			}
+		}
+
+		features, err := db.UnmarshalNullableJSONTo[db.PlanFeatures](plan.Features)
+		if err != nil {
+			return err
+		}
+
+		if features.MaxAppointmentsPerMonth != nil && tenant.AppointmentsThisMonth >= int32(*features.MaxAppointmentsPerMonth) { // No limit if null
 			return apperrors.ErrPlanLimitReached
 		}
 

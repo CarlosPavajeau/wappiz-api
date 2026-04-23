@@ -7,21 +7,24 @@ import (
 )
 
 type Config struct {
-	DB         db.Database
-	Whatsapp   whatsapp.Client
-	SlotFinder slot_finder.SlotFinderService
+	DB          db.Database
+	Whatsapp    whatsapp.Client
+	SlotFinder  slot_finder.SlotFinderService
+	Environment string
 }
 
 type service struct {
-	db         db.Database
-	whatsapp   whatsapp.Client
-	slotFinder slot_finder.SlotFinderService
+	db          db.Database
+	whatsapp    whatsapp.Client
+	slotFinder  slot_finder.SlotFinderService
+	environment string
 }
 
 func New(cfg Config) *service {
 	return &service{
-		db:         cfg.DB,
-		whatsapp:   cfg.Whatsapp,
-		slotFinder: cfg.SlotFinder,
+		db:          cfg.DB,
+		whatsapp:    cfg.Whatsapp,
+		slotFinder:  cfg.SlotFinder,
+		environment: cfg.Environment,
 	}
 }
