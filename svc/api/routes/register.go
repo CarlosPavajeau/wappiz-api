@@ -23,6 +23,7 @@ import (
 	"wappiz/svc/api/routes/v1/onboarding_step_barber"
 	"wappiz/svc/api/routes/v1/onboarding_step_services"
 	"wappiz/svc/api/routes/v1/onboarding_step_whatsapp"
+	"wappiz/svc/api/routes/v1/plans_get_by_external_id"
 	"wappiz/svc/api/routes/v1/plans_list_active"
 	"wappiz/svc/api/routes/v1/resources_assign_services"
 	"wappiz/svc/api/routes/v1/resources_create"
@@ -157,6 +158,7 @@ func Register(g *gin.Engine, svc *Services) {
 
 	// v1/plans
 	RegisterRoute(auth, &plans_list_active.Handler{DB: svc.Database, Environment: "sandbox"})
+	RegisterRoute(auth, &plans_get_by_external_id.Handler{DB: svc.Database, Environment: "sandbox"})
 
 	// v1/admin
 	admin := auth.Group("/", func(c *gin.Context) {
