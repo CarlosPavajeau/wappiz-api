@@ -179,7 +179,7 @@ type Querier interface {
 	//  FROM subscriptions ts
 	//           JOIN plans p ON p.id = ts.plan_id
 	//  WHERE ts.tenant_id = $1
-	//    AND ts.status = 'active'
+	//    AND ts.status IN ('active', 'trialing')
 	//    AND ts.environment = $2
 	//  LIMIT 1
 	FindActivePlanByTenant(ctx context.Context, db DBTX, arg FindActivePlanByTenantParams) (FindActivePlanByTenantRow, error)
