@@ -32,26 +32,11 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 			return fmt.Errorf("find tenant by id: %w", err)
 		}
 
-		plan, err := db.Query.FindActivePlanByTenant(ctx, s.db.Primary(), db.FindActivePlanByTenantParams{
-			TenantID:    tenant.ID,
-			Environment: s.environment,
-		})
-
+		limited, err := s.isAppointmentLimitReached(ctx, tenant.ID, tenant.AppointmentsThisMonth)
 		if err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("find active plan by tenant: %w", err)
-			} else if tenant.AppointmentsThisMonth >= freePlanLimit { // If no active plan is found, we assume the tenant is on the free plan and enforce the limit.
-				// TODO: Send limit reached notification
-				return apperrors.ErrPlanLimitReached
-			}
+			return fmt.Errorf("check appointment limit: %w", err)
 		}
-
-		features, err := db.UnmarshalNullableJSONTo[db.PlanFeatures]([]byte(plan.Features))
-		if err != nil {
-			return err
-		}
-
-		if features.MaxAppointmentsPerMonth != nil && tenant.AppointmentsThisMonth >= int32(*features.MaxAppointmentsPerMonth) { // No limit if null
+		if limited {
 			// TODO: Send limit reached notification
 			return apperrors.ErrPlanLimitReached
 		}
@@ -147,4 +132,33 @@ func (s *service) handleConfirm(ctx context.Context, msg IncomingMessage, sessio
 	}
 
 	return s.sendConfirmation(ctx, msg, session)
+}
+
+func (s *service) isAppointmentLimitReached(ctx context.Context, tenantID uuid.UUID, appointmentsThisMonth int32) (bool, error) {
+	plan, err := db.Query.FindActivePlanByTenant(ctx, s.db.Primary(), db.FindActivePlanByTenantParams{
+		TenantID:    tenantID,
+		Environment: s.environment,
+	})
+
+	var limit int32 = freePlanLimit
+
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return false, fmt.Errorf("find active plan by tenant: %w", err)
+		}
+		// No active plan — apply free plan limit.
+	} else {
+		features, err := db.UnmarshalNullableJSONTo[db.PlanFeatures]([]byte(plan.Features))
+		if err != nil {
+			return false, err
+		}
+
+		if features.MaxAppointmentsPerMonth == nil {
+			return false, nil
+		}
+
+		limit = int32(*features.MaxAppointmentsPerMonth)
+	}
+
+	return appointmentsThisMonth >= limit, nil
 }
