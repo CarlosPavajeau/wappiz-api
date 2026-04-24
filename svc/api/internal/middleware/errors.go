@@ -22,31 +22,51 @@ func WithErrorHandling() gin.HandlerFunc {
 				urn = "unknown"
 			}
 
+			meta := openapi.Meta{RequestId: c.GetString("request_id")}
+			detail := fault.UserFacingMessage(err)
+			t := string(urn)
+
 			switch urn {
-			case codes.ErrorsForbiddenResourceQuotaExceeded:
+			case codes.ErrorsNotFound:
+				c.AbortWithStatusJSON(http.StatusNotFound, openapi.NotFoundErrorResponse{
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Not Found", Type: t, Detail: detail, Status: http.StatusNotFound},
+				})
+
+			case codes.ErrorsUnauthorized:
+				c.AbortWithStatusJSON(http.StatusUnauthorized, openapi.UnauthorizedErrorResponse{
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Unauthorized", Type: t, Detail: detail, Status: http.StatusUnauthorized},
+				})
+
+			case codes.ErrorsForbidden, codes.ErrorsForbiddenResourceQuotaExceeded:
 				c.AbortWithStatusJSON(http.StatusForbidden, openapi.ForbiddenErrorResponse{
-					Meta: openapi.Meta{
-						RequestId: c.GetString("request_id"),
-					},
-					Error: openapi.BaseError{
-						Title:  "Forbidden",
-						Type:   string(urn),
-						Detail: fault.UserFacingMessage(err),
-						Status: http.StatusForbidden,
-					},
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Forbidden", Type: t, Detail: detail, Status: http.StatusForbidden},
+				})
+
+			case codes.ErrorsConflict:
+				c.AbortWithStatusJSON(http.StatusConflict, openapi.ConflictErrorResponse{
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Conflict", Type: t, Detail: detail, Status: http.StatusConflict},
+				})
+
+			case codes.ErrorsTooManyRequests:
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, openapi.TooManyRequestsErrorResponse{
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Too Many Requests", Type: t, Detail: detail, Status: http.StatusTooManyRequests},
+				})
+
+			case codes.ErrorsBadRequest:
+				c.AbortWithStatusJSON(http.StatusBadRequest, openapi.BadRequestErrorResponse{
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Bad Request", Type: t, Detail: detail, Status: http.StatusBadRequest},
 				})
 
 			default:
 				c.AbortWithStatusJSON(http.StatusInternalServerError, openapi.InternalServerErrorResponse{
-					Meta: openapi.Meta{
-						RequestId: c.GetString("request_id"),
-					},
-					Error: openapi.BaseError{
-						Title:  "Internal Server Error",
-						Type:   string(urn),
-						Detail: fault.UserFacingMessage(err),
-						Status: http.StatusInternalServerError,
-					},
+					Meta:  meta,
+					Error: openapi.BaseError{Title: "Internal Server Error", Type: t, Detail: detail, Status: http.StatusInternalServerError},
 				})
 			}
 		}

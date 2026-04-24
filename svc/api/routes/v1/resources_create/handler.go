@@ -10,7 +10,6 @@ import (
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
 	"wappiz/pkg/jwt"
-	"wappiz/svc/api/openapi"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,17 +36,7 @@ func (h *Handler) Path() string   { return "/v1/resources" }
 func (h *Handler) Handle(c *gin.Context) {
 	var req Request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, openapi.BadRequestErrorResponse{
-			Meta: openapi.Meta{
-				RequestId: c.GetString("request_id"),
-			},
-			Error: openapi.BaseError{
-				Title:  "Bad Request",
-				Type:   "bad_request",
-				Detail: err.Error(),
-				Status: http.StatusBadRequest,
-			},
-		})
+		c.Error(fault.Wrap(err, fault.Code(codes.ErrorsBadRequest), fault.Public(err.Error())))
 		return
 	}
 
@@ -56,17 +45,7 @@ func (h *Handler) Handle(c *gin.Context) {
 
 	limited, err := h.isResourceLimitReached(ctx, tenantID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, openapi.InternalServerErrorResponse{
-			Meta: openapi.Meta{
-				RequestId: c.GetString("request_id"),
-			},
-			Error: openapi.BaseError{
-				Title:  "Internal Server Error",
-				Type:   "internal_server_error",
-				Detail: err.Error(),
-				Status: http.StatusInternalServerError,
-			},
-		})
+		c.Error(fault.Wrap(err, fault.Internal("failed to check resource limit")))
 		return
 	}
 	if limited {
@@ -88,17 +67,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		AvatarUrl: sql.NullString{String: req.AvatarURL, Valid: req.AvatarURL != ""},
 		SortOrder: 1,
 	}); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, openapi.InternalServerErrorResponse{
-			Meta: openapi.Meta{
-				RequestId: c.GetString("request_id"),
-			},
-			Error: openapi.BaseError{
-				Title:  "Internal Server Error",
-				Type:   "internal_server_error",
-				Detail: err.Error(),
-				Status: http.StatusInternalServerError,
-			},
-		})
+		c.Error(fault.Wrap(err, fault.Internal("failed to create resource")))
 		return
 	}
 
