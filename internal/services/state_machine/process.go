@@ -4,6 +4,8 @@ import (
 	"context"
 	"wappiz/pkg/db"
 	"wappiz/pkg/logger"
+
+	"github.com/google/uuid"
 )
 
 func (s *service) Process(ctx context.Context, msg IncomingMessage) error {
@@ -23,6 +25,7 @@ func (s *service) Process(ctx context.Context, msg IncomingMessage) error {
 			"phone_number", msg.From)
 
 		if err := db.Query.InsertCustomer(ctx, s.db.Primary(), db.InsertCustomerParams{
+			ID:          uuid.New(),
 			TenantID:    msg.TenantID,
 			PhoneNumber: msg.From,
 		}); err != nil {
