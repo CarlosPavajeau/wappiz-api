@@ -67,7 +67,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 	if limited {
-		c.AbortWithError(http.StatusForbidden, errors.New("resource limit reached"))
+		c.Error(errors.New("resource limit reached"))
 		return
 	}
 
