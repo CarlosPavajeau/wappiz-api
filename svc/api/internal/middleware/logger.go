@@ -30,7 +30,6 @@ func WithLogging() gin.HandlerFunc {
 		}
 
 		requestID := c.GetString("request_id")
-
 		event.Set(slog.Group("http",
 			slog.String("request_id", requestID),
 			slog.String("method", c.Request.Method),
