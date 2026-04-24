@@ -67,17 +67,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 	if limited {
-		c.AbortWithStatusJSON(http.StatusForbidden, openapi.ForbiddenErrorResponse{
-			Meta: openapi.Meta{
-				RequestId: c.GetString("request_id"),
-			},
-			Error: openapi.BaseError{
-				Title:  "Forbidden Access",
-				Type:   "forbidden",
-				Detail: "Se ha alcanzado el límite de recursos de tu plan. Actualiza tu plan para añadir más recursos.",
-				Status: http.StatusForbidden,
-			},
-		})
+		c.AbortWithError(http.StatusForbidden, errors.New("resource limit reached"))
 		return
 	}
 

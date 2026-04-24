@@ -24,7 +24,6 @@ import (
 	"wappiz/pkg/otel"
 	"wappiz/pkg/prometheus"
 	"wappiz/pkg/runner"
-	"wappiz/pkg/uid"
 	"wappiz/pkg/whatsapp"
 	"wappiz/svc/api/internal/middleware"
 	"wappiz/svc/api/routes"
@@ -160,8 +159,9 @@ func Run(ctx context.Context, cfg Config) error {
 
 	g.Use(
 		gin.Recovery(),
-		middleware.WithRequestID(),
 		middleware.WithLogging(),
+		middleware.WithRequestID(),
+		middleware.WithErrorHandling(),
 		otelgin.Middleware("api"),
 	)
 
@@ -234,16 +234,4 @@ func Run(ctx context.Context, cfg Config) error {
 	logger.Info("API server shut down successfully")
 
 	return nil
-}
-
-func requestIDMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		requestID := c.GetHeader("X-Request-ID")
-		if requestID == "" {
-			requestID = uid.New(uid.RequestPrefix)
-		}
-		c.Set("request_id", requestID)
-		c.Header("X-Request-ID", requestID)
-		c.Next()
-	}
 }
