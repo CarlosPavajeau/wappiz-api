@@ -13,18 +13,12 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
-	"time"
 	"wappiz/pkg/db"
 	"wappiz/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-)
-
-const (
-	// AccessTokenDuration is kept for callers that reference it externally.
-	AccessTokenDuration = 15 * time.Minute
 )
 
 // Claims holds the JWT payload expected from the external auth service.
@@ -138,7 +132,7 @@ func parseOKPKey(k jwkEntry) (ed25519.PublicKey, error) {
 	if len(xBytes) != ed25519.PublicKeySize {
 		return nil, fmt.Errorf("ed25519 public key must be %d bytes, got %d", ed25519.PublicKeySize, len(xBytes))
 	}
-	return ed25519.PublicKey(xBytes), nil
+	return xBytes, nil
 }
 
 // extractTokenHeader decodes the JWT header segment to read kid and alg
@@ -208,7 +202,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		header := c.GetHeader("Authorization")
 		if len(header) < 8 || header[:7] != "Bearer " {
-			logger.Info("[jwt] missing or malformed Authorization header",
+			logger.Warn("[jwt] missing or malformed Authorization header",
 				"method", c.Request.Method,
 				"path", c.Request.URL.Path,
 				"len", len(header))

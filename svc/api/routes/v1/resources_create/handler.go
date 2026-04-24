@@ -33,7 +33,7 @@ func (h *Handler) Path() string   { return "/v1/resources" }
 func (h *Handler) Handle(c *gin.Context) {
 	var req Request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"code": "err:request_body_unreadable", "message": err.Error()})
 		return
 	}
 

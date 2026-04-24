@@ -47,11 +47,9 @@ func (v *DBVerifier) lookupKey(ctx context.Context, kid string) (any, error) {
 func (v *DBVerifier) VerifyToken(ctx context.Context, tokenStr string) (*Claims, error) {
 	kid, alg, err := extractTokenHeader(tokenStr)
 	if err != nil {
-		logger.Info("[jwt] malformed token header", "err", err)
+		logger.Warn("[jwt] malformed token header", "err", err)
 		return nil, errors.New("malformed token")
 	}
-
-	logger.Info("[jwt] verifying token", "kid", kid, "alg", alg)
 
 	// Enforce algorithm allowlist before touching any key material.
 	// This prevents algorithm confusion attacks (e.g. RS256 → HS256, alg:none).
@@ -69,9 +67,9 @@ func (v *DBVerifier) VerifyToken(ctx context.Context, tokenStr string) (*Claims,
 	opts := []gojwt.ParserOption{
 		gojwt.WithLeeway(10 * time.Second), // tolerate small clock skew
 	}
+
 	if v.issuer != "" {
 		opts = append(opts, gojwt.WithIssuer(v.issuer))
-		logger.Info("[jwt] issuer validation enabled", "iss", v.issuer)
 	}
 
 	token, err := gojwt.ParseWithClaims(tokenStr, &Claims{},
@@ -99,6 +97,5 @@ func (v *DBVerifier) VerifyToken(ctx context.Context, tokenStr string) (*Claims,
 		return nil, errors.New("invalid token")
 	}
 
-	logger.Info("[jwt] token valid", "user_id", claims.UserID, "role", claims.Role)
 	return claims, nil
 }
