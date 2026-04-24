@@ -7,7 +7,7 @@ import (
 	"wappiz/internal/services/ratelimit"
 	"wappiz/pkg/jwt"
 	"wappiz/pkg/logger"
-	"wappiz/svc/api/middleware"
+	"wappiz/svc/api/internal/middleware"
 	"wappiz/svc/api/openapi"
 	"wappiz/svc/api/routes/v1/admin_activate_tenant"
 	"wappiz/svc/api/routes/v1/admin_find_pending_activations"
@@ -49,7 +49,6 @@ import (
 	"wappiz/svc/api/routes/v1/webhooks_process_webhook"
 	"wappiz/svc/api/routes/v1/webhooks_verify_webhook"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -70,12 +69,7 @@ import (
 // handler logic.
 func Register(g *gin.Engine, svc *Services) {
 	// CORS must be global so OPTIONS preflight requests are handled before route matching
-	g.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		AllowCredentials: false,
-	}))
+	g.Use(middleware.WithCors())
 
 	// Ratelimit middleware
 	rate := func(c *gin.Context) {
@@ -212,7 +206,7 @@ func Register(g *gin.Engine, svc *Services) {
 	// webhooks
 	RegisterRoute(g, &webhooks_verify_webhook.Handler{})
 
-	webhook := g.Group("/", middleware.WhatsAppSignature(svc.AppSecret))
+	webhook := g.Group("/", middleware.WithWhatsAppSignature(svc.AppSecret))
 	RegisterRoute(webhook, &webhooks_process_webhook.Handler{Processor: svc.WebhookProcessor})
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func WhatsAppSignature(appSecret string) gin.HandlerFunc {
+func WithWhatsAppSignature(appSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		signature := c.GetHeader("X-Hub-Signature-256")
 		if signature == "" {
