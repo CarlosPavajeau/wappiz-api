@@ -95,6 +95,14 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND tenant_id = $2
 	CountCustomerNoShows(ctx context.Context, db DBTX, arg CountCustomerNoShowsParams) (int32, error)
+	//CountResourcesByTenant
+	//
+	//  SELECT tenant_id,
+	//         COUNT(*) AS count
+	//  FROM resources
+	//  WHERE tenant_id = $1
+	//  GROUP BY tenant_id
+	CountResourcesByTenant(ctx context.Context, db DBTX, tenantID uuid.UUID) (CountResourcesByTenantRow, error)
 	//CreateTenantPredefinedFlowFields
 	//
 	//  WITH fields AS (
