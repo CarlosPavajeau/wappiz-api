@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 	"wappiz/pkg/db"
+	"wappiz/pkg/fault"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func (h *Handler) Path() string {
 func (h *Handler) Handle(c *gin.Context) {
 	activations, err := db.Query.FindTenantPendingActivations(c.Request.Context(), h.DB.Primary())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch activations"})
+		c.Error(fault.Wrap(err, fault.Internal("failed to fetch activations")))
 		return
 	}
 
