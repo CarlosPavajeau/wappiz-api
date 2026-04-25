@@ -2,19 +2,15 @@ package state_machine
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"wappiz/pkg/db"
+	"wappiz/pkg/fault"
 	"wappiz/pkg/logger"
 )
 
 func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow, customer db.FindCustomerByPhoneNumberRow) error {
-	var sessionData SessionData
-	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
-		logger.Error("[scheduling] failed to marshal session data on select resource step",
-			"session_id", session.ID,
-			"err", err)
-		return fmt.Errorf("unmarshal session data: %w", err)
+	sessionData, err := db.UnmarshalNullableJSONTo[SessionData](session.Data)
+	if err != nil {
+		return fault.Wrap(err, fault.Internal("unmarshal session data"))
 	}
 
 	if sessionData.DateAttempts >= maxDateAttempts {
@@ -31,7 +27,7 @@ func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, ses
 
 	tenant, err := db.Query.FindTenantByID(ctx, s.db.Primary(), session.TenantID)
 	if err != nil {
-		return fmt.Errorf("find tenant by id: %w", err)
+		return fault.Wrap(err, fault.Internal("find tenant by id"))
 	}
 
 	result, err := s.validateAndFindSlots(ctx, msg.Body, tenant.Timezone, session)
@@ -39,7 +35,7 @@ func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, ses
 	if err != nil {
 		sessionData.DateAttempts++
 		if _, err := s.updateSession(ctx, session, sessionData); err != nil {
-			return fmt.Errorf("update session: %w", err)
+			return fault.Wrap(err, fault.Internal("update session"))
 		}
 
 		errMsg := buildErrorMessage(err, msg.Body, nil)
@@ -61,7 +57,7 @@ func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, ses
 		sessionData.DateAttempts++
 
 		if _, err = s.updateSession(ctx, session, sessionData); err != nil {
-			return fmt.Errorf("update session: %w", err)
+			return fault.Wrap(err, fault.Internal("update session"))
 		}
 
 		return s.whatsapp.SendText(ctx, msg.From, msg.PhoneNumberID, msg.AccessToken,
@@ -72,7 +68,7 @@ func (s *service) handleSelectDate(ctx context.Context, msg IncomingMessage, ses
 	sessionData.DateAttempts = 0
 
 	if _, err = s.updateSession(ctx, session, sessionData); err != nil {
-		return fmt.Errorf("update session: %w", err)
+		return fault.Wrap(err, fault.Internal("update session"))
 	}
 
 	return s.sendSlotList(ctx, msg, result.Slots)

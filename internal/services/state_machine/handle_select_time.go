@@ -2,8 +2,8 @@ package state_machine
 
 import (
 	"context"
-	"encoding/json"
 	"wappiz/pkg/db"
+	"wappiz/pkg/fault"
 )
 
 func (s *service) handleSelectTime(ctx context.Context, msg IncomingMessage, session db.FindCustomerActiveConversationSessionRow, customer db.FindCustomerByPhoneNumberRow) error {
@@ -19,9 +19,9 @@ func (s *service) handleSelectTime(ctx context.Context, msg IncomingMessage, ses
 			"Por favor selecciona una de las opciones de la lista 👆")
 	}
 
-	var sessionData SessionData
-	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
-		return err
+	sessionData, err := db.UnmarshalNullableJSONTo[SessionData](session.Data)
+	if err != nil {
+		return fault.Wrap(err, fault.Internal("unmarshal session data"))
 	}
 
 	sessionData.StartsAt = &startsAt
