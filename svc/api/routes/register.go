@@ -17,6 +17,7 @@ import (
 	"wappiz/svc/api/routes/v1/appointments_update_status"
 	"wappiz/svc/api/routes/v1/customers_block"
 	"wappiz/svc/api/routes/v1/customers_get"
+	"wappiz/svc/api/routes/v1/customers_get_incidents"
 	"wappiz/svc/api/routes/v1/customers_list"
 	"wappiz/svc/api/routes/v1/customers_unblock"
 	"wappiz/svc/api/routes/v1/onboarding_get_progress"
@@ -166,6 +167,7 @@ func Register(g *gin.Engine, svc *Services) {
 	RegisterRoute(auth, &customers_get.Handler{DB: svc.Database})
 	RegisterRoute(auth, &customers_block.Handler{DB: svc.Database})
 	RegisterRoute(auth, &customers_unblock.Handler{DB: svc.Database})
+	RegisterRoute(auth, &customers_get_incidents.Handler{DB: svc.Database})
 
 	// v1/resources
 	RegisterRoute(auth, &resources_list.Handler{DB: svc.Database})
