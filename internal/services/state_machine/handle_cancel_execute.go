@@ -43,19 +43,17 @@ func (s *service) handleCancelExecute(ctx context.Context, msg IncomingMessage, 
 	}
 
 	err = db.Tx(ctx, s.db.Primary(), func(ctx context.Context, txx db.DBTX) error {
-		err := db.Query.UpdateAppointment(ctx, txx, db.UpdateAppointmentParams{
+		if err := db.Query.UpdateAppointment(ctx, txx, db.UpdateAppointmentParams{
 			Status:       db.AppointmentStatusCancelled,
 			CancelledBy:  sql.NullString{},
 			CancelReason: sql.NullString{String: "Cancelado por el cliente", Valid: true},
 			CompletedAt:  sql.NullTime{},
 			ID:           appointmentID,
-		})
-
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 
-		err = db.Query.InsertAppointmentStatusHistory(ctx, txx, db.InsertAppointmentStatusHistoryParams{
+		if err := db.Query.InsertAppointmentStatusHistory(ctx, txx, db.InsertAppointmentStatusHistoryParams{
 			ID:            uuid.New(),
 			AppointmentID: appointmentID,
 			FromStatus:    appointment.Status,
@@ -63,9 +61,7 @@ func (s *service) handleCancelExecute(ctx context.Context, msg IncomingMessage, 
 			ChangedBy:     sql.NullString{Valid: false},
 			ChangedByRole: sql.NullString{Valid: false},
 			Reason:        sql.NullString{String: "Cancelado por el cliente", Valid: true},
-		})
-
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 
