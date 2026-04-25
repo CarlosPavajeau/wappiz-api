@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"time"
+	"wappiz/pkg/fault"
 	"wappiz/pkg/logger"
 
 	_ "github.com/jackc/pgx/v5"
@@ -25,7 +26,7 @@ func open(dns string) (*sql.DB, error) {
 	// We need to call Ping() to verify connectivity.
 	db, err := sql.Open("pgx", dns)
 	if err != nil {
-		return nil, err
+		return nil, fault.Wrap(err, fault.Internal("failed to open database"))
 	}
 
 	// Configure connection pool for better performance
@@ -36,7 +37,7 @@ func open(dns string) (*sql.DB, error) {
 	db.SetConnMaxIdleTime(1 * time.Minute)
 
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, fault.Wrap(err, fault.Internal("failed to ping database"))
 	}
 
 	logger.Info("database connection pool initialized successfully")
