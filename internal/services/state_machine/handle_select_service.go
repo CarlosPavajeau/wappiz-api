@@ -2,10 +2,9 @@ package state_machine
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"time"
 	"wappiz/pkg/db"
+	"wappiz/pkg/fault"
 	"wappiz/pkg/logger"
 )
 
@@ -15,9 +14,9 @@ func (s *service) handleSelectService(ctx context.Context, msg IncomingMessage, 
 		return s.sendServiceList(ctx, msg)
 	}
 
-	var sessionData SessionData
-	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
-		logger.Error("[scheduling] failed to unmarshal session data on select service step",
+	sessionData, err := db.UnmarshalNullableJSONTo[SessionData](session.Data)
+	if err != nil {
+		logger.Warn("[scheduling] failed to unmarshal session data on select service step",
 			"session_id", session.ID,
 			"err", err)
 		return s.sendServiceList(ctx, msg)
@@ -29,7 +28,7 @@ func (s *service) handleSelectService(ctx context.Context, msg IncomingMessage, 
 
 	session, err = s.updateSession(ctx, session, sessionData)
 	if err != nil {
-		return fmt.Errorf("update session: %w", err)
+		return fault.Wrap(err, fault.Internal("update session"))
 	}
 
 	rsc, err := db.Query.FindResourcesByServiceID(ctx, s.db.Primary(), db.FindResourcesByServiceIDParams{
@@ -38,7 +37,7 @@ func (s *service) handleSelectService(ctx context.Context, msg IncomingMessage, 
 	})
 
 	if err != nil {
-		return fmt.Errorf("find resources: %w", err)
+		return fault.Wrap(err, fault.Internal("find resources"))
 	}
 
 	if len(rsc) == 1 {
@@ -47,7 +46,7 @@ func (s *service) handleSelectService(ctx context.Context, msg IncomingMessage, 
 
 		session, err = s.updateSession(ctx, session, sessionData)
 		if err != nil {
-			return fmt.Errorf("update session: %w", err)
+			return fault.Wrap(err, fault.Internal("update session"))
 		}
 
 		return s.sendDatePrompt(ctx, msg)
