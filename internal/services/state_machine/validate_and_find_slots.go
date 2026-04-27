@@ -61,10 +61,9 @@ func (s *service) validateAndFindSlots(ctx context.Context, input, timezone stri
 		if !customerConflict {
 			for _, slot := range slots {
 				if slot.StartsAt.Equal(t) {
-					resourceID := *sessionData.ResourceID
 					return &DateValidationResult{
 						StartsAt:   t,
-						ResourceID: &resourceID,
+						ResourceID: new(*sessionData.ResourceID),
 					}, nil
 				}
 			}
