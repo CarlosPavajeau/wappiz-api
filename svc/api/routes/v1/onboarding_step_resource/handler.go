@@ -1,4 +1,4 @@
-package onboarding_step_barber
+package onboarding_step_resource
 
 import (
 	"database/sql"
@@ -14,12 +14,13 @@ import (
 )
 
 const (
-	stepBarber   int32 = 2
+	stepResource int32 = 2
 	stepWhatsApp int32 = 4
 )
 
 type Request struct {
 	Name        string `json:"name"        binding:"required,min=2"`
+	Type        string `json:"type"      binding:"required"`
 	WorkingDays []int  `json:"workingDays" binding:"required,min=1"`
 	StartTime   string `json:"startTime"   binding:"required"`
 	EndTime     string `json:"endTime"     binding:"required"`
@@ -57,7 +58,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		c.Error(fault.Wrap(err, fault.Internal("failed to fetch onboarding progress")))
 		return
 	}
-	if progress.CurrentStep < stepBarber {
+	if progress.CurrentStep < stepResource {
 		c.Error(fault.New("onboarding step not available",
 			fault.Code(codes.ErrorsForbidden),
 			fault.Internal("step not available yet"),
@@ -90,7 +91,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		ID:        resourceID,
 		TenantID:  tenantID,
 		Name:      req.Name,
-		Type:      "barber",
+		Type:      req.Type,
 		AvatarUrl: sql.NullString{},
 		SortOrder: 1,
 	}); err != nil {
@@ -120,5 +121,5 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"nextStep": stepBarber + 1})
+	c.JSON(http.StatusOK, gin.H{"nextStep": stepResource + 1})
 }

@@ -22,7 +22,7 @@ import (
 	"wappiz/svc/api/routes/v1/customers_unblock"
 	"wappiz/svc/api/routes/v1/onboarding_get_progress"
 	"wappiz/svc/api/routes/v1/onboarding_get_templates"
-	"wappiz/svc/api/routes/v1/onboarding_step_barber"
+	"wappiz/svc/api/routes/v1/onboarding_step_resource"
 	"wappiz/svc/api/routes/v1/onboarding_step_services"
 	"wappiz/svc/api/routes/v1/onboarding_step_whatsapp"
 	"wappiz/svc/api/routes/v1/plans_get_by_external_id"
@@ -158,7 +158,7 @@ func Register(g *gin.Engine, svc *Services) {
 	// v1/onboarding
 	RegisterRoute(auth, &onboarding_get_progress.Handler{DB: svc.Database})
 	RegisterRoute(auth, &onboarding_get_templates.Handler{DB: svc.Database})
-	RegisterRoute(auth, &onboarding_step_barber.Handler{DB: svc.Database})
+	RegisterRoute(auth, &onboarding_step_resource.Handler{DB: svc.Database})
 	RegisterRoute(auth, &onboarding_step_services.Handler{DB: svc.Database})
 	RegisterRoute(auth, &onboarding_step_whatsapp.Handler{DB: svc.Database, Mailer: svc.Mailer, AdminEmail: svc.AdminEmail})
 
