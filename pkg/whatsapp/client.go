@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"wappiz/pkg/codes"
+	"wappiz/pkg/fault"
 )
 
 // httpClient is the concrete implementation of [Client] backed by the
@@ -83,14 +85,14 @@ func (c *httpClient) SendList(ctx context.Context, to, phoneNumberID, accessToke
 func (c *httpClient) send(ctx context.Context, phoneNumberID, accessToken string, payload interface{}) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("marshal payload: %w", err)
+		return fault.Wrap(err, fault.Internal("failed to marshal request payload"))
 	}
 
 	url := fmt.Sprintf("%s/%s/%s/messages", c.baseURL, c.apiVersion, phoneNumberID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+		return fault.Wrap(err, fault.Internal("failed to create HTTP request"))
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -98,13 +100,16 @@ func (c *httpClient) send(ctx context.Context, phoneNumberID, accessToken string
 
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("send request: %w", err)
+		return fault.Wrap(err, fault.Internal("HTTP request failed"))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("whatsapp api error %d: %s", resp.StatusCode, respBody)
+		return fault.New(fmt.Sprintf("Cloud API error: %s", string(respBody)),
+			fault.Code(codes.AppErrorsInternalUnexpectedError),
+			fault.Internal("Cloud API returned error status"),
+		)
 	}
 
 	return nil
