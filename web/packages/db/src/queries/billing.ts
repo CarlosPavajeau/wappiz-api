@@ -1,0 +1,81 @@
+import { eq } from "drizzle-orm"
+
+import { db } from ".."
+import { plans, subscriptionOrders, subscriptions } from "../schema"
+
+export type InsertSubscription = typeof subscriptions.$inferInsert
+
+export async function insertSubscription(subscription: InsertSubscription) {
+  return await db.insert(subscriptions).values(subscription).returning()
+}
+
+export type UpdateSubscription = {
+  status: string
+  cancelAtPeriodEnd?: boolean
+  canceledAt?: Date
+  externalId: string
+}
+
+export async function updateSubscriptionStatus(
+  subscription: UpdateSubscription
+) {
+  await db
+    .update(subscriptions)
+    .set({
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      canceledAt: subscription.canceledAt,
+      status: subscription.status,
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptions.externalId, subscription.externalId))
+}
+
+export async function findSubscriptionByExternalId(externalId: string) {
+  return await db.query.subscriptions.findFirst({
+    columns: {
+      id: true,
+    },
+    where: {
+      externalId,
+    },
+  })
+}
+
+export async function findPlanByExternalId(externalId: string) {
+  return await db.query.plans.findFirst({
+    columns: {
+      id: true,
+      name: true,
+    },
+    where: {
+      externalId,
+    },
+  })
+}
+
+export type InsertPlan = typeof plans.$inferInsert
+
+export async function upsertPlan(plan: InsertPlan) {
+  const existingPlan = await findPlanByExternalId(plan.externalId)
+  if (existingPlan) {
+    const [updated] = await db
+      .update(plans)
+      .set({ ...plan, updatedAt: new Date() })
+      .where(eq(plans.externalId, plan.externalId))
+      .returning()
+
+    return updated
+  }
+
+  const [created] = await db.insert(plans).values(plan).returning()
+
+  return created
+}
+
+export type InsertSubscriptionOrder = typeof subscriptionOrders.$inferInsert
+
+export async function insertSubscriptionOrder(order: InsertSubscriptionOrder) {
+  const [result] = await db.insert(subscriptionOrders).values(order).returning()
+
+  return result
+}

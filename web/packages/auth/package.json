@@ -1,0 +1,27 @@
+{
+  "name": "@wappiz/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@polar-sh/better-auth": "^1.8.3",
+    "@wappiz/db": "workspace:*",
+    "@wappiz/env": "workspace:*",
+    "@wappiz/polar": "workspace:*",
+    "@wappiz/resend": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@wappiz/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

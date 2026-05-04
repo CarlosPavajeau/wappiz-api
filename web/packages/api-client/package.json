@@ -1,0 +1,24 @@
+{
+  "name": "@wappiz/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@wappiz/env": "workspace:*",
+    "js-cookie": "^3.0.5"
+  },
+  "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^22.13.14",
+    "@wappiz/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
