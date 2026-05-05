@@ -1,7 +1,5 @@
 "use client"
 
-import { ArrowDown01Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type {
   Appointment,
@@ -21,13 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/client-api"
@@ -54,8 +45,7 @@ const DIALOG_DESCRIPTIONS: Partial<Record<AppointmentStatus, string>> = {
     "Esta acción marcará al cliente como no presentado y no se podrá deshacer.",
 }
 
-const isDestructive = (status: AppointmentStatus) =>
-  status === "cancelled" || status === "no_show"
+const isDestructive = (status: AppointmentStatus) => status === "cancelled"
 
 export function StatusActionMenu({
   appointment,
@@ -80,11 +70,11 @@ export function StatusActionMenu({
         ...(status === "cancelled" ? { cancelled_by: cancelledBy } : {}),
       }),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ["appointments"] })
       setDialogOpen(false)
       setPendingStatus(null)
       setReason("")
       setCancelledBy("customer")
+      queryClient.refetchQueries({ queryKey: ["appointments"] })
     },
   })
 
@@ -93,8 +83,6 @@ export function StatusActionMenu({
   }
 
   const [primaryStatus, ...overflowStatuses] = transitions
-  const primaryConfig = getStatusConfig(primaryStatus)
-  const hasOverflow = overflowStatuses.length > 0
 
   const triggerAction = (status: AppointmentStatus) => {
     if (requiresConfirmation(status)) {
@@ -124,67 +112,30 @@ export function StatusActionMenu({
 
   return (
     <>
-      <ButtonGroup className="w-full">
+      {primaryStatus && (
         <Button
+          key={primaryStatus}
           disabled={isPending}
           onClick={() => triggerAction(primaryStatus)}
           type="button"
-          className="w-full flex-1"
         >
-          {isPending ? (
-            <>
-              <Spinner className="shrink-0" />
-              Actualizando…
-            </>
-          ) : (
-            <>Cambiar a {primaryConfig.label}</>
-          )}
+          {isPending && <Spinner data-icon="inline-start" />}
+          Cambiar a {getStatusConfig(primaryStatus).label}
         </Button>
+      )}
 
-        {hasOverflow && (
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    aria-label="Más opciones de estado"
-                    disabled={isPending}
-                    type="button"
-                    className="pl-2!"
-                  >
-                    <HugeiconsIcon
-                      icon={ArrowDown01Icon}
-                      size={14}
-                      strokeWidth={2}
-                    />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="end" className="w-44">
-                {overflowStatuses.map((status) => {
-                  const config = getStatusConfig(status)
-                  return (
-                    <DropdownMenuItem
-                      key={status}
-                      onClick={() => triggerAction(status)}
-                      variant={
-                        isDestructive(status) ? "destructive" : "default"
-                      }
-                    >
-                      <HugeiconsIcon
-                        icon={config.icon}
-                        size={16}
-                        strokeWidth={2}
-                      />
-                      {config.label}
-                    </DropdownMenuItem>
-                  )
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        )}
-      </ButtonGroup>
+      {overflowStatuses.map((status) => (
+        <Button
+          key={status}
+          disabled={isPending}
+          onClick={() => triggerAction(status)}
+          type="button"
+          variant={isDestructive(status) ? "destructive" : "secondary"}
+        >
+          {isPending && <Spinner data-icon="inline-start" />}
+          Cambiar a {getStatusConfig(status).label}
+        </Button>
+      ))}
 
       <AlertDialog onOpenChange={handleDialogOpenChange} open={dialogOpen}>
         <AlertDialogContent>

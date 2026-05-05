@@ -8,7 +8,6 @@ import { DetailRow } from "@/components/detail-row"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -144,10 +143,7 @@ export function AppointmentDetailModal({
           <AppointmentDetailContent appointment={appointment} />
         </div>
 
-        <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>
-            Cerrar
-          </DialogClose>
+        <DialogFooter className="flex-col sm:flex-col" showCloseButton>
           {!isTerminal && <StatusActionMenu appointment={appointment} />}
         </DialogFooter>
       </DialogContent>

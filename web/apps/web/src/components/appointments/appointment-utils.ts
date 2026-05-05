@@ -58,9 +58,9 @@ export function formatTime(iso: string) {
 
 const TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
   cancelled: [],
-  check_in: ["in_progress", "cancelled", "no_show"],
+  check_in: ["in_progress", "no_show", "cancelled"],
   completed: [],
-  confirmed: ["check_in", "cancelled", "no_show"],
+  confirmed: ["check_in", "no_show", "cancelled"],
   in_progress: ["completed", "cancelled"],
   no_show: [],
   pending: ["confirmed", "cancelled"],
