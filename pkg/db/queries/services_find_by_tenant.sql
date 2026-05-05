@@ -11,5 +11,4 @@ SELECT id,
        created_at
 FROM services
 WHERE tenant_id = $1
-  AND is_active = true
 ORDER BY created_at;

@@ -20,6 +20,7 @@ type Response struct {
 	TotalMinutes    int32     `json:"totalMinutes"`
 	Price           float64   `json:"price"`
 	SortOrder       int32     `json:"sortOrder"`
+	IsActive        bool      `json:"isActive"`
 }
 
 type Handler struct {
@@ -51,6 +52,7 @@ func (h *Handler) Handle(c *gin.Context) {
 			TotalMinutes:    s.DurationMinutes + s.BufferMinutes,
 			Price:           price,
 			SortOrder:       s.SortOrder,
+			IsActive:        s.IsActive,
 		}
 	}
 

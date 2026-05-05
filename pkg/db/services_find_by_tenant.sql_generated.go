@@ -24,7 +24,6 @@ SELECT id,
        created_at
 FROM services
 WHERE tenant_id = $1
-  AND is_active = true
 ORDER BY created_at
 `
 
@@ -42,7 +41,6 @@ ORDER BY created_at
 //	       created_at
 //	FROM services
 //	WHERE tenant_id = $1
-//	  AND is_active = true
 //	ORDER BY created_at
 func (q *Queries) FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error) {
 	rows, err := db.QueryContext(ctx, findServicesByTenantID, tenantID)

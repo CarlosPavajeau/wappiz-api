@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Tooltip,
@@ -54,6 +55,7 @@ const updateServiceSchema = type({
   price: type("number >= 0").configure({
     message: "El precio debe ser 0 o mayor",
   }),
+  isActive: "boolean",
 })
 
 type UpdateServiceFormValues = typeof updateServiceSchema.infer
@@ -73,6 +75,7 @@ export function UpdateServiceDialog({ service }: { service: Service }) {
       description: service.description ?? "",
       durationMinutes: service.durationMinutes,
       name: service.name,
+      isActive: service.isActive,
       price: service.price,
     },
     resolver: arktypeResolver(updateServiceSchema),
@@ -256,6 +259,28 @@ export function UpdateServiceDialog({ service }: { service: Service }) {
                       const val = e.target.value
                       field.onChange(val === "" ? "" : Number(val))
                     }}
+                  />
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="isActive"
+              render={({ field, fieldState }) => (
+                <Field
+                  orientation="horizontal"
+                  className="w-fit"
+                  data-invalid={fieldState.invalid}
+                >
+                  <FieldLabel htmlFor={field.name}>Activo</FieldLabel>
+                  <Switch
+                    id={field.name}
+                    name={field.name}
+                    aria-invalid={fieldState.invalid}
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
                   />
                   <FieldError errors={[fieldState.error]} />
                 </Field>

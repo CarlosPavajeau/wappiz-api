@@ -534,7 +534,6 @@ type Querier interface {
 	//         created_at
 	//  FROM services
 	//  WHERE tenant_id = $1
-	//    AND is_active = true
 	//  ORDER BY created_at
 	FindServicesByTenantID(ctx context.Context, db DBTX, tenantID uuid.UUID) ([]Service, error)
 	//FindServicesWithAssignedResourceByTenantID
@@ -1188,9 +1187,10 @@ type Querier interface {
 	//      duration_minutes = $3,
 	//      buffer_minutes   = $4,
 	//      price            = $5,
-	//      sort_order       = $6
-	//  WHERE id = $7
-	//    AND tenant_id = $8
+	//      sort_order       = $6,
+	//      is_active        = $7
+	//  WHERE id = $8
+	//    AND tenant_id = $9
 	UpdateService(ctx context.Context, db DBTX, arg UpdateServiceParams) error
 	//UpdateTenant
 	//

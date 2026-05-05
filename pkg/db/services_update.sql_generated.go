@@ -19,9 +19,10 @@ SET name             = $1,
     duration_minutes = $3,
     buffer_minutes   = $4,
     price            = $5,
-    sort_order       = $6
-WHERE id = $7
-  AND tenant_id = $8
+    sort_order       = $6,
+    is_active        = $7
+WHERE id = $8
+  AND tenant_id = $9
 `
 
 type UpdateServiceParams struct {
@@ -31,6 +32,7 @@ type UpdateServiceParams struct {
 	BufferMinutes   int32          `db:"buffer_minutes"`
 	Price           string         `db:"price"`
 	SortOrder       int32          `db:"sort_order"`
+	IsActive        bool           `db:"is_active"`
 	ID              uuid.UUID      `db:"id"`
 	TenantID        uuid.UUID      `db:"tenant_id"`
 }
@@ -43,9 +45,10 @@ type UpdateServiceParams struct {
 //	    duration_minutes = $3,
 //	    buffer_minutes   = $4,
 //	    price            = $5,
-//	    sort_order       = $6
-//	WHERE id = $7
-//	  AND tenant_id = $8
+//	    sort_order       = $6,
+//	    is_active        = $7
+//	WHERE id = $8
+//	  AND tenant_id = $9
 func (q *Queries) UpdateService(ctx context.Context, db DBTX, arg UpdateServiceParams) error {
 	_, err := db.ExecContext(ctx, updateService,
 		arg.Name,
@@ -54,6 +57,7 @@ func (q *Queries) UpdateService(ctx context.Context, db DBTX, arg UpdateServiceP
 		arg.BufferMinutes,
 		arg.Price,
 		arg.SortOrder,
+		arg.IsActive,
 		arg.ID,
 		arg.TenantID,
 	)

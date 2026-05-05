@@ -7,6 +7,7 @@ export type Service = {
   totalMinutes: number
   price: number
   sortOrder: number
+  isActive: boolean
 }
 
 export type CreateServiceRequest = {
