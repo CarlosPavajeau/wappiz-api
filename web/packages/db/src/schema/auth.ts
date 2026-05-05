@@ -101,7 +101,7 @@ export const verifications = pgTable(
   ]
 )
 
-export const jwks = pgTable("jwks", {
+export const jwkss = pgTable("jwks", {
   createdAt: timestamp("created_at", {
     precision: 6,
     withTimezone: true,
