@@ -779,6 +779,13 @@ type Querier interface {
 	//      (reminder_1h_sent_at IS NULL AND starts_at BETWEEN NOW() + INTERVAL '50 minutes' AND NOW() + INTERVAL '70 minutes')
 	//      )
 	FindUpcomingAppointments(ctx context.Context, db DBTX) ([]FindUpcomingAppointmentsRow, error)
+	//FindUserByID
+	//
+	//  SELECT id, banned, ban_reason, ban_expires
+	//  FROM users
+	//  WHERE id = $1
+	//  LIMIT 1
+	FindUserByID(ctx context.Context, db DBTX, id string) (FindUserByIDRow, error)
 	//HasCustomerOverlap
 	//
 	//  SELECT EXISTS (

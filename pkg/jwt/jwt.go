@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 	"wappiz/pkg/db"
 	"wappiz/svc/api/openapi"
 
@@ -298,6 +300,54 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		user, err := db.Query.FindUserByID(c.Request.Context(), defaultVerifier.dbtx, claims.UserID)
+		if errors.Is(err, sql.ErrNoRows) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, openapi.UnauthorizedErrorResponse{
+				Meta: openapi.Meta{
+					RequestId: c.GetString("request_id"),
+				},
+				Error: openapi.BaseError{
+					Title:  "User not found",
+					Type:   "unauthorized",
+					Detail: "The account associated with this token no longer exists.",
+					Status: http.StatusUnauthorized,
+				},
+			})
+			return
+		}
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, openapi.InternalServerErrorResponse{
+				Meta: openapi.Meta{
+					RequestId: c.GetString("request_id"),
+				},
+				Error: openapi.BaseError{
+					Title:  "User verification failed.",
+					Type:   "internal_server_error",
+					Detail: "Could not verify the account associated with this token. Please try again.",
+					Status: http.StatusInternalServerError,
+				},
+			})
+			return
+		}
+		if isBanned(user, time.Now()) {
+			detail := "Your account has been banned. Contact support."
+			if user.BanReason.Valid && user.BanReason.String != "" {
+				detail = fmt.Sprintf("Your account has been banned: %s", user.BanReason.String)
+			}
+			c.AbortWithStatusJSON(http.StatusForbidden, openapi.ForbiddenErrorResponse{
+				Meta: openapi.Meta{
+					RequestId: c.GetString("request_id"),
+				},
+				Error: openapi.BaseError{
+					Title:  "Account banned",
+					Type:   "forbidden",
+					Detail: detail,
+					Status: http.StatusForbidden,
+				},
+			})
+			return
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
 
@@ -310,6 +360,16 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// isBanned reports whether the user has an active ban. A ban with a
+// ban_expires timestamp in the past has lapsed and no longer blocks access;
+// a NULL ban_expires means the ban is permanent.
+func isBanned(user db.FindUserByIDRow, now time.Time) bool {
+	if !user.Banned.Valid || !user.Banned.Bool {
+		return false
+	}
+	return !user.BanExpires.Valid || user.BanExpires.Time.After(now)
 }
 
 func TenantIDFromContext(c *gin.Context) uuid.UUID {
