@@ -39,6 +39,7 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_prometheus_client_golang//prometheus/collectors",
         "@com_github_prometheus_common//version",
+        "@com_github_sethvargo_go_envconfig//:go-envconfig",
         "@io_opentelemetry_go_contrib_instrumentation_github_com_gin_gonic_gin_otelgin//:otelgin",
     ],
 )

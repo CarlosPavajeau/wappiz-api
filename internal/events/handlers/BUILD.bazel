@@ -7,6 +7,7 @@ go_library(
         "appointment_created_email.go",
         "appointment_rescheduled_email.go",
         "appointment_rescheduled_whatsapp.go",
+        "registry.go",
     ],
     importpath = "wappiz/internal/events/handlers",
     visibility = ["//:__subpackages__"],
