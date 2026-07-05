@@ -20,9 +20,13 @@ go_library(
 
 go_test(
     name = "jwt_test",
-    srcs = ["verifier_test.go"],
+    srcs = [
+        "jwt_test.go",
+        "verifier_test.go",
+    ],
     embed = [":jwt"],
     deps = [
+        "//pkg/db",
         "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_stretchr_testify//require",
     ],
