@@ -8,8 +8,11 @@ import (
 )
 
 func main() {
-	cfg := api.LoadConfiguration()
-	err := api.Run(context.Background(), cfg)
+	cfg, err := api.LoadConfiguration()
+
+	if err == nil {
+		err = api.Run(context.Background(), *cfg)
+	}
 
 	if err != nil {
 		logger.Error("failed to run API", "err", err)

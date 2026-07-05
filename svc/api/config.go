@@ -1,12 +1,12 @@
 package api
 
 import (
-	"os"
-	"strconv"
+	"context"
 	"time"
 	"wappiz/pkg/logger"
 
 	"github.com/joho/godotenv"
+	"github.com/sethvargo/go-envconfig"
 )
 
 // LoggingConfig controls log sampling. Events faster than SlowThreshold are
@@ -15,11 +15,11 @@ import (
 type LoggingConfig struct {
 	// SampleRate is the probability (0.0–1.0) of emitting a fast log event.
 	// Set to 1.0 to log everything.
-	SampleRate float64
+	SampleRate float64 `env:"LOG_SAMPLE_RATE"`
 
 	// SlowThreshold is the duration above which a request is always logged
 	// regardless of SampleRate.
-	SlowThreshold time.Duration
+	SlowThreshold time.Duration `env:"LOG_SLOW_THRESHOLD"`
 }
 
 // TracingConfig controls OpenTelemetry tracing and metrics export.
@@ -28,172 +28,82 @@ type LoggingConfig struct {
 type TracingConfig struct {
 
 	// SampleRate is the probability (0.0–1.0) that a trace is sampled.
-	SampleRate float64
+	SampleRate float64 `env:"LOG_SAMPLE_RATE"`
 }
 
 // MetricsConfig controls Prometheus metrics exposition.
 type MetricsConfig struct {
 	// PrometheusPort is the TCP port where Prometheus-compatible metrics are served.
 	// Set to 0 to disable metrics exposure.
-	PrometheusPort int
+	PrometheusPort int `env:"PROMETHEUS_PORT"`
 }
 
 type Observability struct {
-	Tracing *TracingConfig
-	Logging *LoggingConfig
-	Metrics *MetricsConfig
+	Tracing *TracingConfig `env:", noinit"`
+	Logging *LoggingConfig `env:", noinit"`
+	Metrics *MetricsConfig `env:", noinit"`
 }
 
 type WebhookConfig struct {
-	Workers   int
-	BufferCap int
+	Workers   int `env:"WEBHOOK_WORKERS, default=4"`
+	BufferCap int `env:"BUFFER_CAP, default=2000"`
 }
 
 // Config holds all runtime configuration values for the API server,
 // populated from environment variables (or a .env file).
 type Config struct {
 	// InstanceID identifies this particular API server instance.
-	InstanceID string
+	InstanceID string `env:"INSTANCE_ID"`
 	// Region is the geographic region identifier (e.g. "us-east-1", "eu-west-1").
-	Region string
+	Region string `env:"REGION"`
 	// DatabaseURL is the connection string for the PostgreSQL database (DATABASE_URL).
-	DatabaseURL string
+	DatabaseURL string `env:"DATABASE_URL"`
 	// RedisURL is the connection string for the Redis instance (REDIS_URL)
-	RedisURL string
+	RedisURL string `env:"REDIS_URL"`
 	// Port is the address the HTTP server listens on (PORT). Defaults to ":8080".
-	Port string
+	Port string `env:"PORT, default=:8080"`
 	// WhatsappBaseURL is the base URL for the WhatsApp Cloud API (WHATSAPP_BASE_URL).
 	// Defaults to "https://graph.facebook.com".
-	WhatsappBaseURL string
+	WhatsappBaseURL string `env:"WHATSAPP_BASE_URL, default=https://graph.facebook.com"`
 	// WhatsappAPIVersion is the WhatsApp Cloud API version to use (WHATSAPP_API_VERSION).
 	// Defaults to "v19.0".
-	WhatsappAPIVersion string
+	WhatsappAPIVersion string `env:"WHATSAPP_API_VERSION, default=v19.0"`
 	// WebhookVerifyToken is the secret token used to verify incoming webhook subscriptions
 	// from Meta (WEBHOOK_VERIFY_TOKEN).
-	WebhookVerifyToken string
+	WebhookVerifyToken string `env:"WEBHOOK_VERIFY_TOKEN, required"`
 	// WhatsappAppSecret is the app secret used to validate the X-Hub-Signature-256 header
 	// on incoming webhook payloads (WHATSAPP_APP_SECRET).
-	WhatsappAppSecret string
+	WhatsappAppSecret string `env:"WHATSAPP_APP_SECRET, required"`
 	// EncryptionKey is the key used to encrypt sensitive data at rest (ENCRYPTION_KEY).
-	EncryptionKey string
+	EncryptionKey string `env:"ENCRYPTION_KEY, required"`
 	// AdminEmail is the email address of the default admin user (ADMIN_EMAIL).
-	AdminEmail string
+	AdminEmail string `env:"ADMIN_EMAIL, required"`
 	// ResendAPIKey is the API key for the Resend email delivery service (RESEND_API_KEY).
-	ResendAPIKey string
+	ResendAPIKey string `env:"RESEND_API_KEY, required"`
 	// ResendFromEmail is the sender address used for outgoing emails (RESEND_FROM_EMAIL).
-	ResendFromEmail string
+	ResendFromEmail string `env:"RESEND_FROM_EMAIL, required"`
 	// JWTIssuer is the expected "iss" claim value for incoming JWTs (JWT_ISSUER).
 	// Optional — when empty the issuer claim is not validated.
-	JWTIssuer     string
+	JWTIssuer     string `env:"JWT_ISSUER"`
 	Observability Observability
 	Webhook       WebhookConfig
 	// Environment can be sandbox or production, used to filter active plans in the database
-	Environment string
+	Environment string `env:"ENVIRONMENT, default=production"`
 }
 
 // LoadConfiguration reads configuration from a .env file if present, then falls back
 // to the process environment. Fields without defaults will cause the process to exit if
 // their corresponding environment variable is not set.
-func LoadConfiguration() Config {
+func LoadConfiguration() (*Config, error) {
 	if err := godotenv.Load(); err != nil {
 		logger.Info("no .env file found, using environment variables")
 	}
 
-	var sampleRate float64
-	if srStr := getOrDefault("LOG_SAMPLE_RATE", "1.0"); srStr != "" {
-		var err error
-		sampleRate, err = strconv.ParseFloat(srStr, 64)
-		if err != nil {
-			sampleRate = 1.0
-		}
+	var cfg Config
+
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
+		return nil, err
 	}
 
-	var slowThreshold time.Duration
-	if slowThresholdStr := getOrDefault("LOG_SLOW_THRESHOLD", "5s"); slowThresholdStr != "" {
-		var err error
-		if slowThreshold, err = time.ParseDuration(slowThresholdStr); err != nil {
-			slowThreshold = 5 * time.Second
-		}
-	}
-
-	var prometheusPort int
-	if promPortStr := getOrDefault("PROMETHEUS_PORT", "9090"); promPortStr != "" {
-		var err error
-		prometheusPort, err = strconv.Atoi(promPortStr)
-		if err != nil {
-			prometheusPort = 9090 // Default port for Prometheus metrics
-		}
-	}
-
-	var webhookWorkers int
-	if webhookWorkersStr := getOrDefault("WEBHOOK_WORKERS", "4"); webhookWorkersStr != "" {
-		var err error
-		webhookWorkers, err = strconv.Atoi(webhookWorkersStr)
-		if err != nil {
-			webhookWorkers = 4
-		}
-	}
-
-	var bufferCap int
-	if bufferCapStr := getOrDefault("BUFFER_CAP", "2000"); bufferCapStr != "" {
-		var err error
-		bufferCap, err = strconv.Atoi(bufferCapStr)
-		if err != nil {
-			bufferCap = 2_000
-		}
-	}
-
-	return Config{
-		InstanceID:         mustGet("INSTANCE_ID"),
-		Region:             mustGet("REGION"),
-		DatabaseURL:        mustGet("DATABASE_URL"),
-		RedisURL:           mustGet("REDIS_URL"),
-		Port:               getOrDefault("PORT", ":8080"),
-		WhatsappBaseURL:    getOrDefault("WHATSAPP_BASE_URL", "https://graph.facebook.com"),
-		WhatsappAPIVersion: getOrDefault("WHATSAPP_API_VERSION", "v19.0"),
-		WebhookVerifyToken: mustGet("WEBHOOK_VERIFY_TOKEN"),
-		WhatsappAppSecret:  mustGet("WHATSAPP_APP_SECRET"),
-		EncryptionKey:      mustGet("ENCRYPTION_KEY"),
-		AdminEmail:         mustGet("ADMIN_EMAIL"),
-		ResendAPIKey:       mustGet("RESEND_API_KEY"),
-		ResendFromEmail:    mustGet("RESEND_FROM_EMAIL"),
-		JWTIssuer:          os.Getenv("JWT_ISSUER"), // optional
-		Environment:        getOrDefault("ENVIRONMENT", "production"),
-		Observability: Observability{
-			Tracing: &TracingConfig{
-				SampleRate: sampleRate,
-			},
-			Logging: &LoggingConfig{
-				SampleRate:    sampleRate,
-				SlowThreshold: slowThreshold,
-			},
-			Metrics: &MetricsConfig{
-				PrometheusPort: prometheusPort,
-			},
-		},
-		Webhook: WebhookConfig{
-			Workers:   webhookWorkers,
-			BufferCap: bufferCap,
-		},
-	}
-}
-
-// mustGet returns the value of the environment variable identified by key.
-// If the variable is absent or empty the error is logged and the process exits with status 1.
-func mustGet(key string) string {
-	v := os.Getenv(key)
-	if v == "" {
-		logger.Error("missing environment variable: " + key)
-		os.Exit(1)
-	}
-	return v
-}
-
-// getOrDefault returns the value of the environment variable identified by key,
-// or def when the variable is absent or empty.
-func getOrDefault(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
+	return &cfg, nil
 }
