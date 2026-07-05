@@ -1,0 +1,7 @@
+# Keep .git: the build derives Version/Revision from git when available.
+web/
+bin/
+dist/
+bazel-*
+Dockerfile
+.dockerignore

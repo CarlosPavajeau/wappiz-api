@@ -4,9 +4,6 @@ before:
   hooks:
     - go mod tidy
 
-env:
-  - PACKAGE_PATH=github.com/CarlosPavajeau/wappiz/cmd
-
 builds:
   - id: wappiz
     main: ./cmd/api
@@ -22,9 +19,9 @@ builds:
 
     ldflags:
       - -s -w
-      - -X 'github.com/CarlosPavajeau/wappiz/pkg/buildinfo.Version={{.Version}}'
-      - -X 'github.com/CarlosPavajeau/wappiz/pkg/buildinfo.Revision={{.FullCommit}}'
-      - -X 'github.com/CarlosPavajeau/wappiz/pkg/buildinfo.BuildTime={{.Date}}'
+      - -X 'wappiz/pkg/buildinfo.Version={{.Version}}'
+      - -X 'wappiz/pkg/buildinfo.Revision={{.FullCommit}}'
+      - -X 'wappiz/pkg/buildinfo.BuildTime={{.Date}}'
 
 upx:
   - enabled: true
