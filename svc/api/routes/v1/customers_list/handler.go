@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -48,7 +48,7 @@ func toResponse(c db.FindCustomersByTenantRow) Response {
 }
 
 func (h *Handler) Handle(c *gin.Context) error {
-	tenantID := jwt.TenantIDFromContext(c)
+	tenantID := middleware.TenantIDFromContext(c)
 
 	customers, err := db.Query.FindCustomersByTenant(c.Request.Context(), h.DB.Primary(), tenantID)
 	if err != nil {

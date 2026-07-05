@@ -15,7 +15,6 @@ require (
 	github.com/resend/resend-go/v3 v3.5.0
 	github.com/shirou/gopsutil/v4 v4.26.3
 	github.com/stretchr/testify v1.11.1
-	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
 	go.opentelemetry.io/contrib/bridges/prometheus v0.68.0
@@ -32,7 +31,10 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0
 )
 
-require github.com/mdelapenya/tlscert v0.2.0 // indirect
+require (
+	github.com/mdelapenya/tlscert v0.2.0 // indirect
+	github.com/testcontainers/testcontainers-go v0.42.0 // indirect
+)
 
 require (
 	cel.dev/expr v0.25.1 // indirect
@@ -147,7 +149,7 @@ require (
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect

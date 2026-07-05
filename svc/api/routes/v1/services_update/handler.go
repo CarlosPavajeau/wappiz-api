@@ -7,7 +7,7 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -45,7 +45,7 @@ func (h *Handler) Handle(c *gin.Context) error {
 		return err
 	}
 
-	tenantID := jwt.TenantIDFromContext(c)
+	tenantID := middleware.TenantIDFromContext(c)
 
 	if err := db.Query.UpdateService(c.Request.Context(), h.DB.Primary(), db.UpdateServiceParams{
 		ID:              id,

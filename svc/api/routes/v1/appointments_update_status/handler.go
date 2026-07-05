@@ -10,8 +10,8 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
 	"wappiz/pkg/whatsapp"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -63,8 +63,8 @@ func (h *Handler) Handle(c *gin.Context) error {
 		)
 	}
 
-	tenantID := jwt.TenantIDFromContext(c)
-	updatedBy := jwt.UserIDFromContext(c)
+	tenantID := middleware.TenantIDFromContext(c)
+	updatedBy := middleware.UserIDFromContext(c)
 	updatedByRole, _ := c.Get("role")
 	role, _ := updatedByRole.(string)
 

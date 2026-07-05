@@ -7,7 +7,7 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"wappiz/pkg/server"
 
@@ -61,7 +61,7 @@ func (h *Handler) Handle(c *gin.Context) error {
 
 	rowsAffected, err := db.Query.UpdateFlowField(c.Request.Context(), h.DB.Primary(), db.UpdateFlowFieldParams{
 		ID:         id,
-		TenantID:   jwt.TenantIDFromContext(c),
+		TenantID:   middleware.TenantIDFromContext(c),
 		Question:   sql.NullString{String: question, Valid: true},
 		IsRequired: *req.IsRequired,
 		IsOneTime:  isOneTime,

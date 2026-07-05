@@ -11,8 +11,8 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
 	"wappiz/pkg/server"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -60,7 +60,7 @@ func (h *Handler) Handle(c *gin.Context) error {
 		)
 	}
 
-	tenantID := jwt.TenantIDFromContext(c)
+	tenantID := middleware.TenantIDFromContext(c)
 	ctx := c.Request.Context()
 
 	customer, err := db.Query.FindCustomerByID(ctx, h.DB.Primary(), req.CustomerID)

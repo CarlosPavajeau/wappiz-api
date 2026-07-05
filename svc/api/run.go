@@ -123,15 +123,15 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 
-	jwt.Init(database.Primary(), cfg.JWTIssuer)
+	jwtVerifier := jwt.NewDBVerifier(database.Primary(), jwt.WithIssuer(cfg.JWTIssuer))
 
-	jwt.InitTenantFinder(func(ctx context.Context, userID string) (uuid.UUID, error) {
+	tenantFinder := func(ctx context.Context, userID string) (uuid.UUID, error) {
 		tenant, err := db.Query.FindTenantByUserId(ctx, database.Primary(), userID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to find tenant for user %s: %w", userID, err)
 		}
 		return tenant.ID, nil
-	})
+	}
 
 	mailerSvc := mailer.New(mailer.Config{
 		ApiKey:    cfg.ResendAPIKey,
@@ -200,6 +200,8 @@ func Run(ctx context.Context, cfg Config) error {
 
 	routes.Register(g, &routes.Services{
 		Database:         database,
+		JWTVerifier:      jwtVerifier,
+		TenantFinder:     tenantFinder,
 		Mailer:           mailerSvc,
 		Whatsapp:         waSvc,
 		StateMachine:     stateMachineSvc,

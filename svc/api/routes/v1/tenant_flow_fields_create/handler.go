@@ -7,7 +7,7 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -63,7 +63,7 @@ func (h *Handler) Handle(c *gin.Context) error {
 	id := uuid.New()
 	field, err := db.Query.InsertCustomTenantFlowField(c.Request.Context(), h.DB.Primary(), db.InsertCustomTenantFlowFieldParams{
 		ID:         id,
-		TenantID:   jwt.TenantIDFromContext(c),
+		TenantID:   middleware.TenantIDFromContext(c),
 		FieldKey:   customFieldKey(id),
 		Question:   sql.NullString{String: question, Valid: true},
 		IsRequired: *req.IsRequired,

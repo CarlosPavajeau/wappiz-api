@@ -6,7 +6,7 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -29,7 +29,7 @@ func (h *Handler) Method() string { return http.MethodGet }
 func (h *Handler) Path() string   { return "/v1/tenants/by-user" }
 
 func (h *Handler) Handle(c *gin.Context) error {
-	userID := jwt.UserIDFromContext(c)
+	userID := middleware.UserIDFromContext(c)
 
 	tenant, err := db.Query.FindTenantByUserId(c.Request.Context(), h.DB.Primary(), userID)
 	if err != nil {

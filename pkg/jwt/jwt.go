@@ -1,26 +1,18 @@
 package jwt
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"net/http"
 	"strings"
-	"time"
-	"wappiz/pkg/db"
-	"wappiz/svc/api/openapi"
 
-	"github.com/gin-gonic/gin"
 	gojwt "github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 // Claims holds the JWT payload expected from the external auth service.
@@ -30,11 +22,6 @@ type Claims struct {
 	Role   string `json:"role"`
 	gojwt.RegisteredClaims
 }
-
-// TenantIDLookup resolves a tenant UUID from a user ID.
-// It is called by AuthMiddleware after token verification to populate the
-// tenant_id context value. Set it via InitTenantFinder at startup.
-type TenantIDLookup func(ctx context.Context, userID string) (uuid.UUID, error)
 
 // jwkEntry is the wire representation of a single JSON Web Key.
 type jwkEntry struct {
@@ -216,177 +203,4 @@ func isAllowedAlg(alg string) bool {
 	default:
 		return false
 	}
-}
-
-var defaultVerifier *DBVerifier
-var defaultTenantFinder TenantIDLookup
-
-// InitTenantFinder registers the function used by AuthMiddleware to resolve
-// a tenant UUID from the authenticated user ID. Call this at startup after
-// the tenant use-case is initialised.
-func InitTenantFinder(f TenantIDLookup) {
-	defaultTenantFinder = f
-}
-
-// Init initialises the package-level DB-backed JWT verifier.
-// It must be called once at application startup, before any requests are served.
-func Init(dbtx db.DBTX, issuer string) {
-	defaultVerifier = NewDBVerifier(dbtx, issuer)
-}
-
-// AuthMiddleware is a Gin middleware that validates Bearer JWTs using public keys
-// stored in the database jwks table. Init must be called before routes are served.
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if defaultVerifier == nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, openapi.InternalServerErrorResponse{
-				Meta: openapi.Meta{
-					RequestId: c.GetString("request_id"),
-				},
-				Error: openapi.BaseError{
-					Title:  "DB verification failed.",
-					Type:   "internal_server_error",
-					Detail: "JWT verifier is not initialized. This is a server configuration error. Contact support.",
-					Status: http.StatusInternalServerError,
-				},
-			})
-			return
-		}
-
-		header := c.GetHeader("Authorization")
-		if len(header) < 8 || header[:7] != "Bearer " {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, openapi.UnauthorizedErrorResponse{
-				Meta: openapi.Meta{
-					RequestId: c.GetString("request_id"),
-				},
-				Error: openapi.BaseError{
-					Title:  "Missing or invalid Authorization header.",
-					Type:   "unauthorized",
-					Detail: "JWT header is missing or is malformed.",
-					Status: http.StatusUnauthorized,
-				},
-			})
-			return
-		}
-
-		claims, err := defaultVerifier.VerifyToken(c.Request.Context(), header[7:])
-		if err != nil {
-			if errors.Is(err, gojwt.ErrTokenExpired) {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, openapi.UnauthorizedErrorResponse{
-					Meta: openapi.Meta{
-						RequestId: c.GetString("request_id"),
-					},
-					Error: openapi.BaseError{
-						Title:  "Token expired",
-						Type:   "unauthorized",
-						Detail: "Authentication token is expired. Please obtain a new token and try again.",
-						Status: http.StatusUnauthorized,
-					},
-				})
-				return
-			}
-
-			c.AbortWithStatusJSON(http.StatusUnauthorized, openapi.UnauthorizedErrorResponse{
-				Meta: openapi.Meta{
-					RequestId: c.GetString("request_id"),
-				},
-				Error: openapi.BaseError{
-					Title:  "Token invalid",
-					Type:   "unauthorized",
-					Detail: err.Error(),
-					Status: http.StatusUnauthorized,
-				},
-			})
-			return
-		}
-
-		user, err := db.Query.FindUserByID(c.Request.Context(), defaultVerifier.dbtx, claims.UserID)
-		if errors.Is(err, sql.ErrNoRows) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, openapi.UnauthorizedErrorResponse{
-				Meta: openapi.Meta{
-					RequestId: c.GetString("request_id"),
-				},
-				Error: openapi.BaseError{
-					Title:  "User not found",
-					Type:   "unauthorized",
-					Detail: "The account associated with this token no longer exists.",
-					Status: http.StatusUnauthorized,
-				},
-			})
-			return
-		}
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, openapi.InternalServerErrorResponse{
-				Meta: openapi.Meta{
-					RequestId: c.GetString("request_id"),
-				},
-				Error: openapi.BaseError{
-					Title:  "User verification failed.",
-					Type:   "internal_server_error",
-					Detail: "Could not verify the account associated with this token. Please try again.",
-					Status: http.StatusInternalServerError,
-				},
-			})
-			return
-		}
-		if isBanned(user, time.Now()) {
-			detail := "Your account has been banned. Contact support."
-			if user.BanReason.Valid && user.BanReason.String != "" {
-				detail = fmt.Sprintf("Your account has been banned: %s", user.BanReason.String)
-			}
-			c.AbortWithStatusJSON(http.StatusForbidden, openapi.ForbiddenErrorResponse{
-				Meta: openapi.Meta{
-					RequestId: c.GetString("request_id"),
-				},
-				Error: openapi.BaseError{
-					Title:  "Account banned",
-					Type:   "forbidden",
-					Detail: detail,
-					Status: http.StatusForbidden,
-				},
-			})
-			return
-		}
-
-		c.Set("user_id", claims.UserID)
-		c.Set("role", claims.Role)
-
-		if defaultTenantFinder != nil {
-			tenantID, err := defaultTenantFinder(c.Request.Context(), claims.UserID)
-			if err == nil {
-				c.Set("tenant_id", tenantID)
-			}
-		}
-
-		c.Next()
-	}
-}
-
-// isBanned reports whether the user has an active ban. A ban with a
-// ban_expires timestamp in the past has lapsed and no longer blocks access;
-// a NULL ban_expires means the ban is permanent.
-func isBanned(user db.FindUserByIDRow, now time.Time) bool {
-	if !user.Banned.Valid || !user.Banned.Bool {
-		return false
-	}
-	return !user.BanExpires.Valid || user.BanExpires.Time.After(now)
-}
-
-func TenantIDFromContext(c *gin.Context) uuid.UUID {
-	return c.MustGet("tenant_id").(uuid.UUID)
-}
-
-// TenantIDFromContextOK returns the tenant UUID and whether it was present.
-// Use this when the tenant may not exist yet (e.g. first-time registration).
-func TenantIDFromContextOK(c *gin.Context) (uuid.UUID, bool) {
-	v, exists := c.Get("tenant_id")
-	if !exists {
-		return uuid.UUID{}, false
-	}
-	id, ok := v.(uuid.UUID)
-	return id, ok
-}
-
-func UserIDFromContext(c *gin.Context) string {
-	return c.MustGet("user_id").(string)
 }

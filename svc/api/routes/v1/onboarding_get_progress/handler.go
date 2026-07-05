@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +19,7 @@ func (h *Handler) Path() string   { return "/v1/onboarding/progress" }
 const stepAccount = 1
 
 func (h *Handler) Handle(c *gin.Context) error {
-	tenantID, ok := jwt.TenantIDFromContextOK(c)
+	tenantID, ok := middleware.TenantIDFromContextOK(c)
 	if !ok {
 		c.JSON(http.StatusOK, gin.H{
 			"currentStep": stepAccount,

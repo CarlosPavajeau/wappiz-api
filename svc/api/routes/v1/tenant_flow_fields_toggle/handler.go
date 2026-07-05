@@ -5,7 +5,7 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -29,7 +29,7 @@ func (h *Handler) Handle(c *gin.Context) error {
 
 	}
 
-	tenantId := jwt.TenantIDFromContext(c)
+	tenantId := middleware.TenantIDFromContext(c)
 
 	err = db.Query.ToggleFlowField(c.Request.Context(), h.DB.Primary(), db.ToggleFlowFieldParams{
 		ID:       flowFieldID,

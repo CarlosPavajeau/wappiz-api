@@ -3,7 +3,6 @@ package routes
 import (
 	"net/http"
 	"time"
-	"wappiz/pkg/jwt"
 	"wappiz/pkg/server"
 	"wappiz/svc/api/internal/middleware"
 	"wappiz/svc/api/routes/v1/admin_activate_tenant"
@@ -82,7 +81,11 @@ func Register(g *gin.Engine, svc *Services) {
 		Duration: time.Minute,
 		Cost:     1,
 	})
-	auth := g.Group("/", jwt.AuthMiddleware(), rate)
+	auth := g.Group("/", middleware.WithAuthentication(middleware.AuthConfig{
+		Verifier:     svc.JWTVerifier,
+		DB:           svc.Database.Primary(),
+		TenantFinder: svc.TenantFinder,
+	}), rate)
 
 	// ---------------------------------------------------------------------------
 	// v1/tenants

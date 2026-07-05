@@ -9,7 +9,7 @@ import (
 	"wappiz/pkg/codes"
 	"wappiz/pkg/db"
 	"wappiz/pkg/fault"
-	"wappiz/pkg/jwt"
+	"wappiz/svc/api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -121,7 +121,7 @@ func (h *Handler) Handle(c *gin.Context) error {
 	}
 	statuses = c.QueryArray("status")
 
-	tenantID := jwt.TenantIDFromContext(c)
+	tenantID := middleware.TenantIDFromContext(c)
 
 	dayStart := time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, fromDate.Location())
 	dayEnd := time.Date(toDate.Year(), toDate.Month(), toDate.Day(), 0, 0, 0, 0, toDate.Location()).Add(24 * time.Hour)

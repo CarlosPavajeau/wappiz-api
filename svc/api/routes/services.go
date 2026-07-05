@@ -8,8 +8,10 @@ import (
 	"wappiz/internal/services/webhookprocessor"
 	"wappiz/pkg/crypto"
 	"wappiz/pkg/db"
+	"wappiz/pkg/jwt"
 	"wappiz/pkg/mailer"
 	"wappiz/pkg/whatsapp"
+	"wappiz/svc/api/internal/middleware"
 )
 
 // Services aggregates all dependencies required by API route handlers. It acts
@@ -22,6 +24,13 @@ import (
 type Services struct {
 	// Database provides access to the primary database
 	Database db.Database
+
+	// JWTVerifier validates bearer tokens for authenticated routes.
+	JWTVerifier *jwt.DBVerifier
+
+	// TenantFinder resolves the tenant for an authenticated user; used by the
+	// auth middleware to populate the tenant_id context value.
+	TenantFinder middleware.TenantIDLookup
 
 	// Mailer provides an email client for transactional messages.
 	Mailer mailer.Mailer
