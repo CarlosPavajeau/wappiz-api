@@ -142,19 +142,21 @@ func Run(ctx context.Context, cfg Config) error {
 		ApiVersion: cfg.WhatsappAPIVersion,
 	})
 
-	eventsDispatcher := events.NewDispatcher()
-	eventsDispatcher.Register(handlers.NewAppointmentCanceledEmailHandler(database, mailerSvc))
-	eventsDispatcher.Register(handlers.NewAppointmentCreatedEmailHandler(database, mailerSvc))
-	eventsDispatcher.Register(handlers.NewAppointmentRescheduledEmailHandler(database, mailerSvc))
-	eventsDispatcher.Register(handlers.NewAppointmentRescheduledWhatsAppHandler(database, waSvc, cryptoSvc))
-	eventsPublisher := events.NewPublisher()
+	dis := events.NewDispatcher()
+	handlers.RegisterAll(dis, handlers.Dependencies{
+		Database: database,
+		Mailer:   mailerSvc,
+		Whatsapp: waSvc,
+		Crypto:   cryptoSvc,
+	})
+	pub := events.NewPublisher()
 
 	slotFinder := slotfinder.New(database)
 	stateMachineSvc := statemachine.New(statemachine.Config{
 		DB:          database,
 		Whatsapp:    waSvc,
 		SlotFinder:  slotFinder,
-		Publisher:   eventsPublisher,
+		Publisher:   pub,
 		Environment: cfg.Environment,
 	})
 
@@ -202,7 +204,7 @@ func Run(ctx context.Context, cfg Config) error {
 		Whatsapp:         waSvc,
 		StateMachine:     stateMachineSvc,
 		SlotFinder:       slotFinder,
-		Publisher:        eventsPublisher,
+		Publisher:        pub,
 		WebhookProcessor: webhookProcessorSvc,
 		AdminEmail:       cfg.AdminEmail,
 		AppSecret:        cfg.WhatsappAppSecret,
@@ -228,7 +230,7 @@ func Run(ctx context.Context, cfg Config) error {
 	eventDispatcherJob := jobs.NewEventDispatcher(jobs.EventDispatcherConfig{
 		DB:         database,
 		ConnString: cfg.DatabaseURL,
-		Dispatcher: eventsDispatcher,
+		Dispatcher: dis,
 	})
 
 	r.Go(func(ctx context.Context) error {
